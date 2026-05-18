@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, query, orderBy, where } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAXAgFYqnLfvqEQJw6Y4_QoavDo6yCOhI",
@@ -132,4 +132,132 @@ export async function updateTreeProfile(id: string, data: Partial<Omit<TreeProfi
 
 export async function deleteTreeProfile(id: string) {
   await deleteDoc(doc(db, 'treeProfiles', id));
+}
+
+// ── User Authentication ─────────────────────────────────────
+export type UserRole = 'admin' | 'user';
+
+export type AppUser = {
+  id: string;
+  username: string;
+  passwordHash: string;
+  role: UserRole;
+  displayName: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+/**
+ * Hash password ด้วย SHA-256 + salt
+ * NOTE: SHA-256 บน client ไม่ปลอดภัยเท่า bcrypt server-side
+ * ใช้ได้สำหรับระดับการใช้งานทีมเล็ก/ครอบครัว
+ */
+export async function hashPassword(password: string): Promise<string> {
+  const salt = 'garden-master-salt-v1';
+  const data = new TextEncoder().encode(password + salt);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export async function getUserByUsername(username: string): Promise<AppUser | null> {
+  const q = query(collection(db, 'users'), where('username', '==', username.toLowerCase()));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  const d = snapshot.docs[0];
+  return { id: d.id, ...d.data() } as AppUser;
+}
+
+export async function getAllUsers(): Promise<AppUser[]> {
+  const q = query(collection(db, 'users'), orderBy('createdAt', 'asc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as AppUser[];
+}
+
+export async function getUserById(id: string): Promise<AppUser | null> {
+  const snap = await getDoc(doc(db, 'users', id));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() } as AppUser;
+}
+
+export async function createUser(input: {
+  username: string;
+  password: string;
+  role: UserRole;
+  displayName: string;
+}): Promise<string> {
+  const username = input.username.toLowerCase().trim();
+  const existing = await getUserByUsername(username);
+  if (existing) throw new Error('USERNAME_TAKEN');
+
+  const passwordHash = await hashPassword(input.password);
+  const now = Date.now();
+  const docRef = await addDoc(collection(db, 'users'), {
+    username,
+    passwordHash,
+    role: input.role,
+    displayName: input.displayName.trim() || username,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return docRef.id;
+}
+
+export async function updateUser(
+  id: string,
+  patch: Partial<{ username: string; role: UserRole; displayName: string }>
+) {
+  const data: Record<string, unknown> = { updatedAt: Date.now() };
+  if (patch.username !== undefined) {
+    const newUsername = patch.username.toLowerCase().trim();
+    // ตรวจซ้ำ
+    const existing = await getUserByUsername(newUsername);
+    if (existing && existing.id !== id) throw new Error('USERNAME_TAKEN');
+    data.username = newUsername;
+  }
+  if (patch.role !== undefined) data.role = patch.role;
+  if (patch.displayName !== undefined) data.displayName = patch.displayName.trim();
+  await updateDoc(doc(db, 'users', id), data);
+}
+
+export async function resetUserPassword(id: string, newPassword: string) {
+  if (!newPassword || newPassword.length < 4) throw new Error('PASSWORD_TOO_SHORT');
+  const passwordHash = await hashPassword(newPassword);
+  await updateDoc(doc(db, 'users', id), {
+    passwordHash,
+    updatedAt: Date.now(),
+  });
+}
+
+export async function deleteUser(id: string) {
+  await deleteDoc(doc(db, 'users', id));
+}
+
+/**
+ * Login — return user หรือ null
+ */
+export async function loginWithCredentials(
+  username: string,
+  password: string
+): Promise<AppUser | null> {
+  const user = await getUserByUsername(username);
+  if (!user) return null;
+  const hash = await hashPassword(password);
+  if (hash !== user.passwordHash) return null;
+  return user;
+}
+
+/**
+ * เช็คว่ามี user ใน DB ไหม ถ้าไม่มี → seed admin คนแรก
+ */
+export async function ensureAdminSeeded(): Promise<void> {
+  const all = await getAllUsers();
+  if (all.length > 0) return;
+  await createUser({
+    username: 'admin',
+    password: 'admin123',
+    role: 'admin',
+    displayName: 'ผู้ดูแลระบบ',
+  });
 }

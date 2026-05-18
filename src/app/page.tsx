@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/lib/useTheme';
+import { useAuth } from '@/lib/useAuth';
 import { getOrchards, type Orchard } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { Moon, Sun, LeafIcon } from 'lucide-react';
+import { Moon, Sun, LeafIcon, Settings } from 'lucide-react';
+import SettingsModal from './_components/SettingsModal';
 
 const ORCHARDS_PRESET = [
   { name: 'สวนมังคุด', color: '#9b59b6', icon: '🍇', colorClass: 'bg-purple-600' },
@@ -14,14 +16,23 @@ const ORCHARDS_PRESET = [
 
 export default function Home() {
   const { isDark, toggleTheme, mounted } = useTheme();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [orchards, setOrchards] = useState<Orchard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Auth guard — ไม่มี session → redirect ไป /login
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
-    loadOrchards();
-  }, []);
+    if (user) loadOrchards();
+  }, [user]);
 
   const loadOrchards = async () => {
     try {
@@ -30,7 +41,6 @@ export default function Home() {
       );
       const data = await Promise.race([getOrchards(), timeout]) as Orchard[];
       if (data.length === 0) {
-        // สร้างสวนตั้งต้น
         const { addOrchard } = await import('@/lib/firebase');
         for (const preset of ORCHARDS_PRESET) {
           await addOrchard({
@@ -53,11 +63,11 @@ export default function Home() {
     }
   };
 
-  if (!mounted || loading) {
+  if (!mounted || authLoading || !user || loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col items-center justify-center gap-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
-        <p className="text-slate-500 text-sm">กำลังเชื่อมต่อ Firebase...</p>
+        <p className="text-slate-500 text-sm">กำลังโหลด...</p>
       </div>
     );
   }
@@ -87,14 +97,27 @@ export default function Home() {
             <LeafIcon size={32} className="fill-white" />
             <h1 className="text-3xl font-extrabold">Garden Master</h1>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-          >
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
+            >
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              title="ตั้งค่าระบบ"
+            >
+              <Settings size={20} />
+            </button>
+          </div>
         </div>
-        <p className="text-emerald-50 text-lg">เลือกสวนที่ต้องการจัดการ</p>
+        <div className="flex items-baseline justify-between flex-wrap gap-2">
+          <p className="text-emerald-50 text-lg">สวัสดี {user.displayName}</p>
+          <p className="text-emerald-100 text-sm">เลือกสวนที่ต้องการจัดการ</p>
+        </div>
       </header>
 
       {/* Orchards Grid */}
@@ -124,6 +147,9 @@ export default function Home() {
       <div className="px-6 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
         <p>💡 เคล็ดลับ: บันทึกข้อมูลแต่ละสวนแยกกันเพื่อการจัดการที่ดีขึ้น</p>
       </div>
+
+      {/* Settings Modal */}
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
