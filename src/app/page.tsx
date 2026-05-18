@@ -5,7 +5,7 @@ import { useTheme } from '@/lib/useTheme';
 import { useAuth } from '@/lib/useAuth';
 import { getOrchards, type Orchard } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { Moon, Sun, LeafIcon, Settings } from 'lucide-react';
+import { Moon, Sun, LeafIcon, Settings, LogOut } from 'lucide-react';
 import SettingsModal from './_components/SettingsModal';
 
 const ORCHARDS_PRESET = [
@@ -16,7 +16,7 @@ const ORCHARDS_PRESET = [
 
 export default function Home() {
   const { isDark, toggleTheme, mounted } = useTheme();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const router = useRouter();
   const [orchards, setOrchards] = useState<Orchard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +111,18 @@ export default function Home() {
               title="ตั้งค่าระบบ"
             >
               <Settings size={20} />
+            </button>
+            <button
+              onClick={() => {
+                if (confirm('ออกจากระบบใช่ไหม?')) {
+                  logout();
+                  router.replace('/login');
+                }
+              }}
+              className="p-2.5 rounded-full bg-white/20 hover:bg-red-500/40 transition-colors"
+              title="ออกจากระบบ"
+            >
+              <LogOut size={20} />
             </button>
           </div>
         </div>
