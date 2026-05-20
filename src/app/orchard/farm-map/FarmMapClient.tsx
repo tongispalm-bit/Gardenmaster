@@ -218,62 +218,61 @@ export default function FarmMapClient() {
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300">
       {/* Header — หน้าแรกของสวนทุเรียนหลังบ้าน */}
       <header
-        className="text-white px-6 pt-6 pb-12"
+        className="text-white px-4 pt-4 pb-4"
         style={{ backgroundColor: orchard.color }}
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <button
             onClick={() => router.push('/')}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
             title="หน้าแรก"
           >
-            <Home size={22} />
+            <Home size={18} />
           </button>
+          <div className="flex items-center gap-2 text-center">
+            <span className="text-2xl">{orchard.icon}</span>
+            <h1 className="text-lg font-bold">{orchard.name}</h1>
+          </div>
           <button
             onClick={toggleTheme}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
           >
-            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-        </div>
-        <div className="text-center">
-          <div className="text-5xl mb-2">{orchard.icon}</div>
-          <h1 className="text-3xl font-bold">{orchard.name}</h1>
-          <p className="text-white/80 mt-1">ผังสวน · จัดการต้นทุเรียน</p>
         </div>
       </header>
 
       {/* Sub Menu Tabs */}
       <SubMenuTabs activeTab="farm-map" orchardId={orchardId} />
 
-      <div className="px-4 sm:px-6 py-6 max-w-6xl mx-auto">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <SummaryCard label="ต้นทั้งหมด" value={summary.total} accent="text-slate-700 dark:text-slate-200" />
-          <SummaryCard label="ปกติ" value={summary.normal} accent="text-emerald-600 dark:text-emerald-400" />
-          <SummaryCard label="เฝ้าระวัง" value={summary.watch} accent="text-rose-600 dark:text-rose-400" />
-          <SummaryCard label="ต้นกล้า" value={summary.seedling} accent="text-sky-600 dark:text-sky-400" />
+      <div className="px-3 sm:px-6 py-3 max-w-6xl mx-auto">
+        {/* Summary Cards — แถวเดียว 4 ช่อง */}
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          <SummaryCard label="ทั้งหมด" value={summary.total} accent="text-slate-700 dark:text-slate-200" />
+          <SummaryCard label="ปกติ" value={summary.normal} accent="text-emerald-500 dark:text-emerald-400" />
+          <SummaryCard label="เฝ้าระวัง" value={summary.watch} accent="text-rose-500 dark:text-rose-400" />
+          <SummaryCard label="ต้นกล้า" value={summary.seedling} accent="text-sky-500 dark:text-sky-400" />
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-3 mb-4 text-sm">
+        {/* Legend — เล็กลง */}
+        <div className="flex flex-wrap gap-2 mb-3 text-xs">
           {(Object.keys(STATUS_META) as Status[]).map((k) => (
-            <div key={k} className="flex items-center gap-2">
-              <span className={`inline-block w-5 h-5 rounded ${STATUS_META[k].bg} ${STATUS_META[k].bgDark}`}></span>
-              <span className="text-slate-700 dark:text-slate-300">{STATUS_META[k].icon} {STATUS_META[k].label}</span>
+            <div key={k} className="flex items-center gap-1">
+              <span className={`inline-block w-3 h-3 rounded ${STATUS_META[k].bg} ${STATUS_META[k].bgDark}`}></span>
+              <span className="text-slate-600 dark:text-slate-400">{STATUS_META[k].icon} {STATUS_META[k].label}</span>
             </div>
           ))}
         </div>
 
         {/* Grid */}
-        <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-slate-700">
-          <div className="inline-block min-w-full">
+        <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl p-2 sm:p-4 border border-slate-200 dark:border-slate-700">
+          <div className="min-w-0">
             {/* Column labels */}
-            <div className="flex gap-1 sm:gap-2 mb-1 sm:mb-2 pl-9 sm:pl-12">
+            <div className="flex gap-0.5 sm:gap-1.5 mb-0.5 sm:mb-2 pl-6 sm:pl-10">
               {Array.from({ length: COLS }, (_, i) => (
                 <div
                   key={i}
-                  className="w-12 h-6 sm:w-14 sm:h-7 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400"
+                  className="w-8 h-5 sm:w-12 sm:h-6 flex items-center justify-center text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400"
                 >
                   C{i + 1}
                 </div>
@@ -284,9 +283,9 @@ export default function FarmMapClient() {
             {Array.from({ length: ROWS }, (_, rIdx) => {
               const row = rIdx + 1;
               return (
-                <div key={row} className="flex gap-1 sm:gap-2 mb-1 sm:mb-2 items-center">
+                <div key={row} className="flex gap-0.5 sm:gap-1.5 mb-0.5 sm:mb-1.5 items-center">
                   {/* Row label */}
-                  <div className="w-8 sm:w-10 h-12 sm:h-14 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400">
+                  <div className="w-5 sm:w-9 h-8 sm:h-12 flex items-center justify-center text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
                     R{row}
                   </div>
                   {Array.from({ length: COLS }, (_, cIdx) => {
@@ -295,7 +294,7 @@ export default function FarmMapClient() {
                       return (
                         <div
                           key={col}
-                          className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700"
+                          className="w-8 h-8 sm:w-12 sm:h-12 rounded-md sm:rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700"
                         />
                       );
                     }
@@ -309,10 +308,10 @@ export default function FarmMapClient() {
                         key={col}
                         onClick={() => openEdit(row, col)}
                         title={`${treeNumber} · ${variety} · ${meta.label}`}
-                        className={`group relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg ${meta.bg} ${meta.bgDark} border border-slate-200 dark:border-slate-700 hover:scale-[1.35] hover:z-10 hover:shadow-xl transition-transform duration-150 flex flex-col items-center justify-center`}
+                        className={`group relative w-8 h-8 sm:w-12 sm:h-12 rounded-md sm:rounded-lg ${meta.bg} ${meta.bgDark} border border-slate-200 dark:border-slate-700 hover:scale-[1.3] hover:z-10 hover:shadow-lg transition-transform duration-150 flex flex-col items-center justify-center`}
                       >
-                        <span className="text-xl leading-none">{meta.icon}</span>
-                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-tight mt-0.5">
+                        <span className="text-sm sm:text-xl leading-none">{meta.icon}</span>
+                        <span className="text-[7px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-tight mt-0 sm:mt-0.5 hidden sm:block">
                           {treeNumber}
                         </span>
                       </button>
@@ -461,9 +460,9 @@ export default function FarmMapClient() {
 
 function SummaryCard({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700">
-      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{label}</p>
-      <p className={`text-2xl font-extrabold ${accent}`}>{value}</p>
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-2 border border-slate-200 dark:border-slate-700 text-center">
+      <p className="text-[10px] text-slate-500 dark:text-slate-400">{label}</p>
+      <p className={`text-lg font-extrabold ${accent}`}>{value}</p>
     </div>
   );
 }

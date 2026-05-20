@@ -1,0 +1,462 @@
+# 🌿 Garden Master — สรุปโปรเจคทั้งหมด
+
+> ระบบจัดการสวนทุเรียน-มังคุดสำหรับเกษตรกรไทย — Web App แบบ Static Export
+>
+> **Live URL:** https://gardanmaster-2d5db.web.app
+> **Repository:** https://github.com/tongispalm-bit/Gardenmaster
+
+---
+
+## 📋 สารบัญ
+
+1. [ภาพรวม](#1-ภาพรวม)
+2. [Tech Stack](#2-tech-stack)
+3. [โครงสร้างไฟล์](#3-โครงสร้างไฟล์)
+4. [ฟีเจอร์ทั้งหมด](#4-ฟีเจอร์ทั้งหมด)
+5. [Data Model](#5-data-model)
+6. [การ Deploy](#6-การ-deploy)
+7. [Timeline การพัฒนา](#7-timeline-การพัฒนา)
+8. [UI Mockups (15 แบบ)](#8-ui-mockups-15-แบบ)
+9. [ปัญหาที่แก้ไข](#9-ปัญหาที่แก้ไข)
+10. [ข้อจำกัดและความปลอดภัย](#10-ข้อจำกัดและความปลอดภัย)
+
+---
+
+## 1. ภาพรวม
+
+**Garden Master (แกนมาสเตอร์)** — เว็บแอปจัดการสวนภาษาไทย ใช้งานสำหรับเกษตรกรเจ้าของสวนทุเรียนและมังคุด มีระบบ login/user management, จัดการสวนหลายสวน, บันทึกการดูแล, รายจ่าย และผังสวนแบบ interactive
+
+### สวนตั้งต้น (Preset 3 สวน)
+| สวน | สี | ไอคอน | คุณสมบัติพิเศษ |
+|---|---|---|---|
+| สวนมังคุด | ม่วง `#9b59b6` | 🍇 | เมนูมาตรฐาน |
+| ทุเรียนหลังบ้าน | เขียว `#27ae60` | 🌳 | **ผังสวน 9×11 (91 ต้น)** |
+| ทุเรียนหมื่นซ่อง | ส้ม `#f39c12` | 🍊 | เมนูมาตรฐาน |
+
+---
+
+## 2. Tech Stack
+
+| Layer | Choice | Version |
+|---|---|---|
+| Framework | Next.js (App Router, Static Export) | 16.2.4 |
+| Language | TypeScript (strict) | 5.x |
+| React | React | 19.2.4 |
+| Styling | Tailwind CSS | v4 |
+| Icons | lucide-react | ^1.11.0 |
+| Database | Firebase Firestore | v12 |
+| Hosting | Firebase Hosting | — |
+
+**Build setup:**
+- `output: 'export'` — Static Site Generation
+- `trailingSlash: true`
+- `images: { unoptimized: true }`
+- `cross-env NODE_OPTIONS=--max-old-space-size=4096` แก้ปัญหา Node OOM ตอน build บน Windows
+
+---
+
+## 3. โครงสร้างไฟล์
+
+```
+src/
+├── app/
+│   ├── layout.tsx                 # Root layout
+│   ├── page.tsx                   # หน้าแรก (เลือกสวน)
+│   ├── globals.css
+│   │
+│   ├── _components/               # Components หน้าแรก
+│   │   ├── BottomNav.tsx          # Mobile bottom nav (ใหม่)
+│   │   └── SettingsModal.tsx      # Modal ตั้งค่าระบบ + จัดการ user
+│   │
+│   ├── login/
+│   │   ├── page.tsx
+│   │   └── LoginClient.tsx        # หน้า login
+│   │
+│   └── orchard/
+│       ├── page.tsx               # Wrapper (Suspense)
+│       ├── layout.tsx
+│       ├── OrchardDetailClient.tsx  # เมนูสวน (สวนปกติ)
+│       │                           # — ทุเรียนหลังบ้าน redirect ไป farm-map
+│       │
+│       ├── _components/
+│       │   ├── SubMenuTabs.tsx       # Tab bar (สำหรับสวนทุเรียนหลังบ้าน)
+│       │   ├── SubPageHeader.tsx     # Shared header + ปุ่ม Home
+│       │   └── ComingSoonClient.tsx  # หน้า "กำลังพัฒนา"
+│       │
+│       ├── care/                  # 🌿 การดูแล
+│       │   ├── page.tsx
+│       │   └── CareClient.tsx
+│       │
+│       ├── expense/               # 📊 รายจ่ายทั่วไป
+│       │   ├── page.tsx
+│       │   └── ExpenseClient.tsx
+│       │
+│       ├── farm-map/              # 📍 ผังสวน 9×11 (พิเศษเฉพาะทุเรียนหลังบ้าน)
+│       │   ├── page.tsx
+│       │   └── FarmMapClient.tsx
+│       │
+│       ├── upgrade/               # 🔧 ค่าปรับปรุง (Coming Soon)
+│       ├── sales/                 # 🛒 การซื้อขาย (Coming Soon)
+│       └── hospital/              # 🏥 ห้องพยาบาล (Coming Soon)
+│
+└── lib/
+    ├── firebase.ts                # Firestore client + types + CRUD ทั้งหมด
+    ├── useAuth.ts                 # Hook สำหรับ session/login state
+    ├── useTheme.ts                # Hook สำหรับ dark/light mode
+    └── storage.ts                 # ⚠️ Legacy localStorage — ไม่ใช้แล้ว
+
+doc/
+├── ผังต้นทุเรียน.md               # สเปคหน้าผังสวน
+├── PROJECT_SUMMARY.md             # ไฟล์นี้
+└── ui-mockups/                    # Mockup HTML 15 แบบ
+    ├── index.html
+    └── 01-glassmorphism.html — 15-cottagecore.html
+```
+
+---
+
+## 4. ฟีเจอร์ทั้งหมด
+
+### 🔐 ระบบ Authentication
+- ✅ Login ด้วย username/password
+- ✅ Session เก็บใน `localStorage` key: `gm-session-v1`
+- ✅ Auth guard บนทุกหน้า → redirect ไป `/login` ถ้าไม่มี session
+- ✅ Auto-seed admin คนแรกเมื่อ DB ว่าง: **`admin / admin123`**
+- ✅ Password hash ด้วย SHA-256 + salt (Web Crypto API)
+- ✅ ปุ่มออกจากระบบ — ที่ header หน้าแรก + ใน Settings Modal
+
+### 👥 จัดการสมาชิก (Settings Modal)
+
+**แท็บ "บัญชีของฉัน"** (ทุก user เห็น):
+- แก้ไข username + ชื่อแสดง
+- เปลี่ยน password ของตัวเอง
+- ปุ่มออกจากระบบ
+
+**แท็บ "จัดการสมาชิก"** (admin เท่านั้น):
+- ➕ เพิ่มสมาชิก (username, password, role, displayName)
+- ✏️ แก้ไข (รวม role admin/user)
+- 🔑 Reset password ของคนอื่น
+- 🗑️ ลบสมาชิก (ห้ามลบตัวเอง)
+
+### 🏡 หน้าแรก (Home)
+- รายการสวนแบบ list-item พร้อม icon + tag + chevron
+- Filter chips: ทั้งหมด · ทุเรียน · มังคุด · ⭐ ที่ชอบ
+- Search bar กลาง header
+- Greeting + avatar ผู้ใช้
+- ปุ่ม theme toggle, settings, logout
+- FAB (+) มุมล่างขวา
+- **Bottom Nav 4 tabs**: หน้าแรก · สวน · สรุป · โปรไฟล์
+
+### 🌿 หน้าสวนแต่ละสวน
+- **สวนปกติ (มังคุด, หมื่นซ่อง)**: เมนูการ์ดใหญ่ 5 ใบ → กดเข้าหน้าย่อย
+- **ทุเรียนหลังบ้าน**: redirect ตรงไปหน้า "ผังสวน" + tab bar เล็กๆ ด้านบน
+
+### 🌱 การดูแล (`/orchard/care`)
+- ฟอร์มเพิ่มบันทึก: วันที่, ประเภท (รดน้ำ/ใส่ปุ๋ย/ฉีดยา), ชื่อต้นไม้, หมายเหตุ
+- รายการบันทึก พร้อมปุ่มลบ
+
+### 📊 รายจ่ายทั่วไป (`/orchard/expense`)
+- ฟอร์มเพิ่มรายจ่าย: วันที่, หมวดหมู่, รายละเอียด, ราคา
+- รายการรายจ่าย พร้อมปุ่มลบ
+
+### 📍 ผังสวน — Farm Map (`/orchard/farm-map`) ⭐ ฟีเจอร์เด่น
+
+**เฉพาะสวน "ทุเรียนหลังบ้าน"** — ตามสเปคใน `doc/ผังต้นทุเรียน.md`:
+
+| ✓ | คุณสมบัติ |
+|---|---|
+| ✅ | Grid 9×11 พร้อม label C1–C9, R1–R11 |
+| ✅ | R1C1–R1C8 ว่าง, R1C9 มีต้น, R2–R11 ครบหมด → รวม **91 ต้น** |
+| ✅ | Color status: 🌳 ปกติ (เขียว), 🌲 เฝ้าระวัง (แดง), 🌴 ต้นกล้า (ฟ้า) |
+| ✅ | Summary header 4 ช่อง: ต้นทั้งหมด/ปกติ/เฝ้าระวัง/ต้นกล้า — real-time |
+| ✅ | Hover scale(1.35) + tooltip รหัส·พันธุ์·สถานะ |
+| ✅ | คลิกต้น → Modal แก้ไข 5 ฟิลด์: รหัสต้น (เริ่มต้น `B0304`), สถานะ, พันธุ์ (8 ตัวเลือก), อายุ, หมายเหตุ |
+| ✅ | Validation: ห้ามรหัสซ้ำ, ห้ามว่าง, จำกัด 20 ตัวอักษร |
+| ✅ | บันทึก → อัปเดตทันที, คลิกนอก/ยกเลิก → ปิด |
+
+**8 พันธุ์ทุเรียน:** หมอนทอง, ชะนี, กระดุม, พวงมณี, ก้านยาว, มูซานคิง, โอฉี, นวลทองจันทร์
+
+### 🚧 หน้ายังไม่พัฒนา (3 หน้า)
+- `/orchard/upgrade` — ค่าปรับปรุง 🔧
+- `/orchard/sales` — การซื้อขาย 🛒
+- `/orchard/hospital` — ห้องพยาบาล 🏥
+
+แสดงหน้า "ฟีเจอร์นี้กำลังพัฒนา" พร้อม header สีตามสวน
+
+### 🎨 Theme
+- Light/Dark mode toggle
+- เก็บใน `localStorage` key: `theme-mode`
+- Apply class `dark` บน `<html>` ก่อน first paint (กัน flash)
+
+---
+
+## 5. Data Model
+
+### Firestore Collections
+
+```typescript
+// orchards
+type Orchard = {
+  id: string;
+  name: string;
+  color: string;       // hex color
+  icon: string;        // emoji
+  createdAt: number;
+};
+
+// careRecords
+type CareRecord = {
+  id: string;
+  orchardId: string;
+  date: string;        // YYYY-MM-DD
+  type: 'water' | 'fertilize' | 'pesticide';
+  plant: string;
+  note: string;
+  createdAt: number;
+};
+
+// transactions
+type Transaction = {
+  id: string;
+  orchardId: string;
+  date: string;
+  type: 'income' | 'expense';
+  amount: number;
+  description: string;
+  category: string;
+  createdAt: number;
+};
+
+// treeProfiles (ผังสวน)
+type TreeProfile = {
+  id: string;
+  orchardId: string;
+  row: number;          // 1-11
+  col: number;          // 1-9
+  treeNumber: string;   // เช่น B0304
+  variety: string;      // หมอนทอง, ชะนี, ...
+  age: number;
+  status: 'normal' | 'watch' | 'seedling';
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+// users (auth)
+type AppUser = {
+  id: string;
+  username: string;       // lowercase
+  passwordHash: string;   // SHA-256 + salt
+  role: 'admin' | 'user';
+  displayName: string;
+  createdAt: number;
+  updatedAt: number;
+};
+```
+
+### Routing
+
+| Path | คำอธิบาย |
+|---|---|
+| `/` | หน้าแรก — รายการสวน |
+| `/login` | หน้า login |
+| `/orchard?id=xxx` | หน้าเมนูของสวน |
+| `/orchard/care?id=xxx` | การดูแล |
+| `/orchard/expense?id=xxx` | รายจ่าย |
+| `/orchard/farm-map?id=xxx` | ผังสวน (เฉพาะทุเรียนหลังบ้าน) |
+| `/orchard/upgrade?id=xxx` | ค่าปรับปรุง (coming soon) |
+| `/orchard/sales?id=xxx` | การซื้อขาย (coming soon) |
+| `/orchard/hospital?id=xxx` | ห้องพยาบาล (coming soon) |
+
+> **Note:** ใช้ query string `?id=xxx` แทน dynamic route `[orchardId]` เพราะ Static Export ต้องการ `generateStaticParams()` ซึ่งไม่เข้ากับ data ที่มาจาก Firestore runtime
+
+---
+
+## 6. การ Deploy
+
+### Firebase Hosting
+
+```bash
+# Build static export
+npm run build
+
+# Deploy
+npx firebase deploy --only hosting --project gardanmaster-2d5db
+```
+
+**Output folder:** `out/`
+**Files deployed:** ~119 ไฟล์
+**URL:** https://gardanmaster-2d5db.web.app
+
+### Firestore Rules (ปัจจุบัน)
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;  // ⚠️ Open — ไม่ปลอดภัย production
+    }
+  }
+}
+```
+
+### GitHub
+```bash
+git push origin main
+```
+**Repo:** https://github.com/tongispalm-bit/Gardenmaster
+
+---
+
+## 7. Timeline การพัฒนา
+
+| ลำดับ | สิ่งที่ทำ |
+|---|---|
+| 1 | แก้ runtime error: เพิ่ม `generateStaticParams()` สำหรับ dynamic route — **เปลี่ยนแนวทางเป็น query string** เพราะ Static Export กับ Firestore data ไม่เข้ากัน |
+| 2 | เปลี่ยนจาก tab navigation → การ์ดเมนูใหญ่ |
+| 3 | แยกเมนูเป็นหน้าย่อย — `/orchard/care`, `/expense`, ฯลฯ |
+| 4 | เพิ่มหน้า **ผังสวน 9×11** (เฉพาะสวนทุเรียนหลังบ้าน) ตามสเปค `ผังต้นทุเรียน.md` |
+| 5 | ทำให้ผังสวนเป็นหน้าหลัก + tab bar เล็กใต้ header สำหรับสวนทุเรียนหลังบ้าน |
+| 6 | Push ขึ้น GitHub repo |
+| 7 | Deploy ขึ้น Firebase Hosting |
+| 8 | สร้างระบบ **Login + User Management** (admin/user role) |
+| 9 | เพิ่มปุ่ม Logout บน header |
+| 10 | สร้าง UI Mockups **15 แบบ** ใน `/doc/ui-mockups/` ให้เลือก |
+| 11 | เริ่มปรับ UI ตามแบบ 8 (Mobile-first Bottom Nav) |
+
+---
+
+## 8. UI Mockups (15 แบบ)
+
+ไฟล์ HTML ทั้งหมดอยู่ใน `doc/ui-mockups/` เปิดดูได้ที่ `index.html`
+
+### Set 1 — แบบที่ 1-5
+| # | สไตล์ | บุคลิก |
+|---|---|---|
+| 1 | Glassmorphism Tropical | กระจกฝ้าโปร่ง gradient หรู ทันสมัย |
+| 2 | Neumorphism Soft Earth | ปุ่มนูนดินเหนียว เอิร์ธโทน อบอุ่น |
+| 3 | Minimal Editorial | ขาวล้วน ตัวอักษรใหญ่ สไตล์นิตยสาร |
+| 4 | Dark Neon Dashboard | มืดสนิท เส้น neon เขียว control room |
+| 5 | Bento Grid Playful | กล่องสีสดหลายขนาด คึกคัก |
+
+### Set 2 — แบบที่ 6-10
+| # | สไตล์ | บุคลิก |
+|---|---|---|
+| 6 | Brutalist Monospace | พิมพ์ดีด เส้นดำหนา เหลือง shadow |
+| 7 | Watercolor Botanical | สีน้ำใบไม้ parchment journal |
+| 8 | **Mobile-first Bottom Nav** ⭐ | Native app เต็มกรอบ (เลือกใช้) |
+| 9 | Sidebar Workspace | Notion/Linear style desktop |
+| 10 | Y2K Retro Garden | pastel sticker marquee น่ารัก 2000s |
+
+### Set 3 — แบบที่ 11-15
+| # | สไตล์ | บุคลิก |
+|---|---|---|
+| 11 | Cyberpunk Holographic | hologram neon ฟิวเจอร์ |
+| 12 | Ghibli Storybook | ภูเขา-เมฆ นิทานญี่ปุ่น สงบ |
+| 13 | Newspaper Vintage | คอลัมน์ serif drop cap classic |
+| 14 | Liquid Chrome | gradient รุ้ง animate premium |
+| 15 | Cottagecore Wooden | พื้นไม้ ป้ายแขวน fairy-tale |
+
+**🎯 แบบที่เลือกใช้: #8 (Mobile-first Bottom Nav)**
+
+---
+
+## 9. ปัญหาที่แก้ไข
+
+### 🔧 Build & Deploy
+| ปัญหา | สาเหตุ | วิธีแก้ |
+|---|---|---|
+| `generateStaticParams()` is missing | Static export ต้องการ params แต่ orchardId มาจาก Firestore | เปลี่ยนเป็น query string `?id=xxx` |
+| `'use client'` + `generateStaticParams` ในไฟล์เดียวกัน | Next.js ห้าม | แยกเป็น 2 ไฟล์ (server + client) |
+| Node OOM ตอน build บน Windows | TypeScript check กิน memory เยอะ | `cross-env NODE_OPTIONS=--max-old-space-size=4096` |
+| PowerShell `npm run` ถูก block | Execution Policy | ใช้ `cmd /c` แทน |
+| `Map` icon ชน Map global | TypeScript confused | `import { Map as MapIcon }` |
+| `git commit -m "msg"` PowerShell quote ผิด | Shell escape | ใช้ `cmd /c git commit -m "..."` ตรงๆ |
+| Merge conflict ตอน push GitHub | Repo ปลายทางมี file อยู่แล้ว | Force push ทับ (`--force-with-lease`) |
+
+### 🎨 UI/UX
+| ปัญหา | วิธีแก้ |
+|---|---|
+| Tab navigation ดูเป็น dashboard เกินไป | เปลี่ยนเป็นการ์ดเมนู grid |
+| การ์ด tab toggle content (ไม่เปลี่ยนหน้า) | แยกเป็นหน้าย่อย — กดเข้าหน้าใหม่จริงๆ |
+| สวนทุเรียนหลังบ้านเข้าถึงผังสวนยาก | redirect ตรงไปหน้าผังสวน เป็นหน้าหลักของสวนนี้ |
+
+---
+
+## 10. ข้อจำกัดและความปลอดภัย
+
+### ⚠️ คำเตือนสำคัญ
+
+1. **Firestore Rules เปิด read/write สาธารณะ**
+   - ทุกคนที่เข้าถึง Firebase project ID ดู password hash ได้
+   - **ควรเข้มงวดขึ้นใน production**
+
+2. **Auth ฝั่ง Client เท่านั้น**
+   - SHA-256 + salt ไม่ปลอดภัยเท่า bcrypt server-side
+   - ไม่มีการป้องกัน brute force, replay attack
+   - **เหมาะกับการใช้งานทีมเล็ก/ครอบครัว** ไม่ใช่ enterprise
+
+3. **Default admin password**
+   - `admin / admin123` ตอน seed ครั้งแรก
+   - **ต้องเปลี่ยนทันทีหลัง login ครั้งแรก**
+
+4. **Firebase config hardcoded**
+   - `src/lib/firebase.ts` มี API key ปรากฏใน source
+   - เป็น public web config (ตามมาตรฐาน Firebase) — ไม่ใช่ secret
+   - ความปลอดภัยพึ่ง Firestore Rules + App Check (ยังไม่เปิด)
+
+### 📌 ข้อจำกัด Static Export
+
+- ❌ ไม่มี API routes
+- ❌ ไม่มี Server Components ดึงข้อมูล
+- ❌ ไม่มี middleware (auth ฝั่ง edge)
+- ❌ ไม่มี ISR
+- ✅ ทุก page เป็น client-rendered จาก Firestore
+
+### 🔮 สิ่งที่ควรทำต่อ (Production-ready)
+
+- [ ] เข้มงวด Firestore Rules — ต้อง login ก่อนถึง read/write
+- [ ] เปลี่ยนไป Firebase Auth (email/password หรือ Anonymous)
+- [ ] เปิด Firebase App Check
+- [ ] เพิ่ม rate limiting (brute force protection)
+- [ ] Migrate dynamic routes กลับเป็น `[orchardId]/` ถ้าเปลี่ยนไป SSR/ISR
+- [ ] เพิ่ม unit tests
+- [ ] เพิ่มฟีเจอร์ที่ค้างอยู่: ค่าปรับปรุง, การซื้อขาย, ห้องพยาบาล, สรุป (summary), โปรไฟล์ user
+
+---
+
+## 📝 คำสั่งที่ใช้บ่อย
+
+```bash
+# Dev server
+npm run dev
+
+# Build static export
+npm run build
+
+# Deploy hosting
+npx firebase deploy --only hosting --project gardanmaster-2d5db
+
+# Deploy firestore rules
+npx firebase deploy --only firestore:rules --project gardanmaster-2d5db
+
+# Lint
+npm run lint
+
+# Git
+cmd /c git add .
+cmd /c git commit -m "message"
+cmd /c git push origin main
+```
+
+---
+
+## 👤 ผู้ดูแลระบบ
+
+- Default admin: `admin / admin123` (เปลี่ยนหลัง login ครั้งแรก)
+- Firebase project: `gardanmaster-2d5db`
+- GitHub: `tongispalm-bit/Gardenmaster`
+
+---
+
+*สรุปเมื่อ: 18 พฤษภาคม 2569 (2026-05-18)*

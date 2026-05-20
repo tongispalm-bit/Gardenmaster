@@ -261,3 +261,244 @@ export async function ensureAdminSeeded(): Promise<void> {
     displayName: 'ผู้ดูแลระบบ',
   });
 }
+
+// ── Sale Records (การซื้อขาย) ───────────────────────────────
+export type DurianGrade = 'AB' | 'C' | 'D' | 'ตกไซร์' | 'อินโด' | 'จัมโบ้' | 'เข้าห้องเย็น' | 'เอาไว้เอง';
+
+export type SaleRecord = {
+  id: string;
+  orchardId: string;
+  date: string;
+  grade: DurianGrade;
+  weight: number;        // กิโลกรัม
+  pricePerKg: number;    // บาท/กก
+  totalAmount: number;   // น้ำหนัก × ราคา/กก
+  cutRate: number;       // 5-10 บาท/กก
+  cutCost: number;       // cutRate × weight
+  netAmount: number;     // totalAmount - cutCost
+  note: string;
+  createdAt: number;
+};
+
+export async function addSaleRecord(record: Omit<SaleRecord, 'id'>) {
+  const docRef = await addDoc(collection(db, 'saleRecords'), record);
+  return docRef.id;
+}
+
+export async function getSaleRecords(orchardId?: string) {
+  const snapshot = await getDocs(collection(db, 'saleRecords'));
+  const records = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as SaleRecord[];
+  return orchardId ? records.filter(r => r.orchardId === orchardId) : records;
+}
+
+export async function deleteSaleRecord(id: string) {
+  await deleteDoc(doc(db, 'saleRecords', id));
+}
+
+// ── Hospital Records (ห้องพยาบาล) ──────────────────────────
+export type Severity = 'mild' | 'moderate' | 'severe';
+export type TreatmentResult = 'better' | 'same' | 'worse';
+export type HospitalStatus = 'treating' | 'recovered';
+
+export type MedicineItem = {
+  name: string;
+  amount: string;
+};
+
+export type HospitalRecord = {
+  id: string;
+  orchardId: string;
+  treeId: string;          // TreeProfile id
+  treeNumber: string;      // รหัสต้น (เก็บไว้แสดงผล)
+  dateFound: string;       // วันที่พบอาการ
+  symptoms: string;        // อาการที่พบ
+  photos: string[];        // base64 หรือ URL (1-6 รูป)
+  severity: Severity;
+  medicines: MedicineItem[];
+  treatmentResult: TreatmentResult | null;
+  recoveryDate: string;    // วันหายป่วย
+  status: HospitalStatus;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export async function addHospitalRecord(record: Omit<HospitalRecord, 'id'>) {
+  const docRef = await addDoc(collection(db, 'hospitalRecords'), record);
+  return docRef.id;
+}
+
+export async function getHospitalRecords(orchardId?: string) {
+  const snapshot = await getDocs(collection(db, 'hospitalRecords'));
+  const records = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as HospitalRecord[];
+  const filtered = orchardId ? records.filter(r => r.orchardId === orchardId) : records;
+  return filtered.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function updateHospitalRecord(id: string, data: Partial<Omit<HospitalRecord, 'id'>>) {
+  await updateDoc(doc(db, 'hospitalRecords', id), { ...data, updatedAt: Date.now() });
+}
+
+export async function deleteHospitalRecord(id: string) {
+  await deleteDoc(doc(db, 'hospitalRecords', id));
+}
+
+// ── Water Settings & Records ────────────────────────────────
+export type WaterSetting = {
+  id: string;
+  orchardId: string;
+  flowRate: number;   // ลิตร/นาที ต่อหัว
+  headCount: number;  // จำนวนหัวน้ำ
+  updatedAt: number;
+};
+
+export type DurianGrowthStage =
+  | 'post_harvest'
+  | 'stress'
+  | 'flowering'
+  | 'full_bloom'
+  | 'tail'
+  | 'fruit';
+
+export const DURIAN_GROWTH_STAGE_LABEL: Record<DurianGrowthStage, string> = {
+  post_harvest: 'ระยะหลังเก็บเกี่ยว',
+  stress:       'ระยะกักโศก',
+  flowering:    'ระยะออกดอก',
+  full_bloom:   'ระยะดอกบาน',
+  tail:         'ระยะหางแย้',
+  fruit:        'ระยะลูก',
+};
+
+export type WaterRecord = {
+  id: string;
+  orchardId: string;
+  date: string;
+  minutes: number;
+  liters: number;
+  growthStage: DurianGrowthStage;
+  createdAt: number;
+};
+
+export async function getWaterSetting(orchardId: string): Promise<WaterSetting | null> {
+  const snapshot = await getDocs(collection(db, 'waterSettings'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as WaterSetting[];
+  return all.find(s => s.orchardId === orchardId) || null;
+}
+
+export async function saveWaterSetting(orchardId: string, data: { flowRate: number; headCount: number }) {
+  const existing = await getWaterSetting(orchardId);
+  if (existing) {
+    await updateDoc(doc(db, 'waterSettings', existing.id), { ...data, updatedAt: Date.now() });
+  } else {
+    await addDoc(collection(db, 'waterSettings'), { orchardId, ...data, updatedAt: Date.now() });
+  }
+}
+
+export async function addWaterRecord(record: Omit<WaterRecord, 'id'>) {
+  const docRef = await addDoc(collection(db, 'waterRecords'), record);
+  return docRef.id;
+}
+
+export async function getWaterRecords(orchardId: string): Promise<WaterRecord[]> {
+  const snapshot = await getDocs(collection(db, 'waterRecords'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as WaterRecord[];
+  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function deleteWaterRecord(id: string) {
+  await deleteDoc(doc(db, 'waterRecords', id));
+}
+
+// ── Fertilizer Formulas & Records ───────────────────────────
+export type GrowthStage = 'leaf' | 'flower' | 'fruit' | 'recovery';
+export const GROWTH_STAGE_LABEL: Record<GrowthStage, string> = {
+  leaf: 'บำรุงใบ',
+  flower: 'ออกดอก',
+  fruit: 'ติดผล',
+  recovery: 'หลังเก็บเกี่ยว',
+};
+
+export type FertilizerFormula = {
+  id: string;
+  orchardId: string;
+  name: string;
+  npk: string;        // เช่น 30-10-10
+  stage: GrowthStage;
+  createdAt: number;
+};
+
+export type FertilizerRecord = {
+  id: string;
+  orchardId: string;
+  date: string;
+  formulaId: string;
+  formulaName: string;
+  npk: string;
+  stage: GrowthStage;
+  amount: number;
+  unit: string;       // กิโลกรัม / ลิตร
+  createdAt: number;
+};
+
+export async function getFertilizerFormulas(orchardId: string): Promise<FertilizerFormula[]> {
+  const snapshot = await getDocs(collection(db, 'fertilizerFormulas'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as FertilizerFormula[];
+  return all.filter(f => f.orchardId === orchardId).sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export async function addFertilizerFormula(record: Omit<FertilizerFormula, 'id'>) {
+  const docRef = await addDoc(collection(db, 'fertilizerFormulas'), record);
+  return docRef.id;
+}
+
+export async function updateFertilizerFormula(id: string, data: Partial<Omit<FertilizerFormula, 'id'>>) {
+  await updateDoc(doc(db, 'fertilizerFormulas', id), data);
+}
+
+export async function deleteFertilizerFormula(id: string) {
+  await deleteDoc(doc(db, 'fertilizerFormulas', id));
+}
+
+export async function addFertilizerRecord(record: Omit<FertilizerRecord, 'id'>) {
+  const docRef = await addDoc(collection(db, 'fertilizerRecords'), record);
+  return docRef.id;
+}
+
+export async function getFertilizerRecords(orchardId: string): Promise<FertilizerRecord[]> {
+  const snapshot = await getDocs(collection(db, 'fertilizerRecords'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as FertilizerRecord[];
+  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function deleteFertilizerRecord(id: string) {
+  await deleteDoc(doc(db, 'fertilizerRecords', id));
+}
+
+// ── Spray Records ────────────────────────────────────────────
+export type SprayMedicine = { name: string; amount: string; unit: string };
+
+export type SprayRecord = {
+  id: string;
+  orchardId: string;
+  date: string;
+  purpose: string;        // วัตถุประสงค์
+  pestDisease: string;    // ชื่อโรค/แมลง
+  medicines: SprayMedicine[];
+  note: string;
+  createdAt: number;
+};
+
+export async function addSprayRecord(record: Omit<SprayRecord, 'id'>) {
+  const docRef = await addDoc(collection(db, 'sprayRecords'), record);
+  return docRef.id;
+}
+
+export async function getSprayRecords(orchardId: string): Promise<SprayRecord[]> {
+  const snapshot = await getDocs(collection(db, 'sprayRecords'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as SprayRecord[];
+  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function deleteSprayRecord(id: string) {
+  await deleteDoc(doc(db, 'sprayRecords', id));
+}

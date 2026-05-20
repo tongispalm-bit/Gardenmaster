@@ -63,7 +63,7 @@ export default function ComingSoonClient({ tabId, title, Icon, accentClass }: Pr
         title={title}
         Icon={Icon}
       />
-      {isDurianBackyard && <SubMenuTabs activeTab={tabId} orchardId={orchardId} />}
+      {isDurianBackyard && null}
 
       <div className="px-6 py-12 max-w-4xl mx-auto">
         <div className="bg-white dark:bg-slate-800 p-12 rounded-2xl text-center border border-slate-200 dark:border-slate-700">

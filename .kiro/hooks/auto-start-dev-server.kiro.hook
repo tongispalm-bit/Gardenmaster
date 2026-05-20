@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Auto Start Dev Server",
+  "description": "เปิด Next.js dev server อัตโนมัติทุกครั้งที่ส่ง prompt แรกใน session",
+  "version": "1",
+  "when": {
+    "type": "promptSubmit"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npm run dev",
+    "timeout": 0
+  }
+}

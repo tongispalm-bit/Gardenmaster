@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>เมนูย่อย — 5 แบบให้เลือก</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background: #0f172a;
+    color: #fff;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  h1 { text-align: center; margin-bottom: 8px; font-size: 22px; }
+  .sub { text-align: center; color: #94a3b8; margin-bottom: 32px; font-size: 14px; }
+
+  .section { margin-bottom: 48px; }
+  .section-title {
+    font-size: 14px;
+    color: #10b981;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    padding-left: 4px;
+  }
+  .section-desc {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 16px;
+    padding-left: 4px;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 100%;
+    max-width: 375px;
+    margin: 0 auto;
+    background: #1e293b;
+    border-radius: 24px;
+    overflow: hidden;
+    border: 3px solid #334155;
+  }
+  .phone-header {
+    background: #27ae60;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #fff;
+  }
+  .phone-header .title {
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 800; font-size: 16px;
+  }
+  .phone-header .icons { display: flex; gap: 8px; font-size: 14px; opacity: .8; }
+  .phone-body { padding: 0; }
+
+  /* ─── แบบ 1: Pill Chips (ปัจจุบัน ปรับใหม่) ─── */
+  .style1 {
+    display: flex;
+    gap: 6px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+  }
+  .style1 .chip {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: #334155;
+    color: #94a3b8;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .style1 .chip.active {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  /* ─── แบบ 2: Bottom Tab Bar ─── */
+  .style2-content { height: 200px; background: #0f172a; }
+  .style2 {
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 4px 12px;
+    background: #1e293b;
+    border-top: 1px solid #334155;
+  }
+  .style2 .tab {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 9px; font-weight: 700; color: #64748b;
+    padding: 4px 6px; border-radius: 8px;
+  }
+  .style2 .tab .ic { font-size: 18px; }
+  .style2 .tab.active { color: #10b981; }
+  .style2 .tab.active .pill {
+    background: #d1fae5;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+
+  /* ─── แบบ 3: Icon Grid Cards (2×3) ─── */
+  .style3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 12px;
+    background: #0f172a;
+  }
+  .style3 .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 14px 8px;
+    text-align: center;
+  }
+  .style3 .card .ic { font-size: 24px; margin-bottom: 6px; }
+  .style3 .card .label { font-size: 10px; font-weight: 700; color: #94a3b8; }
+  .style3 .card.active { border-color: #10b981; background: #064e3b; }
+  .style3 .card.active .label { color: #6ee7b7; }
+
+  /* ─── แบบ 4: Segmented Control (แถบแนวนอน เต็มจอ) ─── */
+  .style4 {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    background: #0f172a;
+    border-bottom: 1px solid #334155;
+  }
+  .style4 .seg {
+    padding: 10px 4px;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #64748b;
+    border-bottom: 2px solid transparent;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .style4 .seg .ic { font-size: 16px; }
+  .style4 .seg.active {
+    color: #10b981;
+    border-bottom-color: #10b981;
+    background: rgba(16,185,129,.08);
+  }
+
+  /* ─── แบบ 5: Floating Dock (ลอยด้านล่าง) ─── */
+  .style5-wrap { position: relative; height: 280px; background: #0f172a; }
+  .style5 {
+    position: absolute;
+    bottom: 12px;
+    left: 12px; right: 12px;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 8px;
+    background: rgba(30,41,59,.95);
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+    border: 1px solid #334155;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.4);
+  }
+  .style5 .dock-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 9px; font-weight: 700; color: #64748b;
+    padding: 4px 6px;
+    border-radius: 12px;
+  }
+  .style5 .dock-item .ic { font-size: 20px; }
+  .style5 .dock-item.active {
+    color: #10b981;
+    background: rgba(16,185,129,.15);
+  }
+
+  .placeholder {
+    height: 160px;
+    display: flex; align-items: center; justify-content: center;
+    color: #334155; font-size: 12px;
+  }
+</style>
+</head>
+<body>
+  <h1>🎨 เมนูย่อย — 5 แบบให้เลือก</h1>
+  <p class="sub">สำหรับหน้าทุเรียนหลังบ้าน (ผัง · ดูแล · รายจ่าย · ปรับปรุง · ซื้อขาย · ห้องพยาบาล)</p>
+
+  <!-- แบบ 1 -->
+  <div class="section">
+    <div class="section-title">แบบ 1 — Pill Chips (Scroll แนวนอน)</div>
+    <div class="section-desc">แถบเล็กๆ ด้านบน scroll ได้ · กะทัดรัด · ไม่กินพื้นที่</div>
+    <div class="phone">
+      <div class="phone-header">
+        <span>🏠</span>
+        <div class="title">🌳 ทุเรียนหลังบ้าน</div>
+        <span>🌙</span>
+      </div>
+      <div class="style1">
+        <span class="chip active">📍 ผัง</span>
+        <span class="chip">🌿 ดูแล</span>
+        <span class="chip">💰 รายจ่าย</span>
+        <span class="chip">🔧 ปรับปรุง</span>
+        <span class="chip">🛒 ซื้อขาย</span>
+        <span class="chip">🏥 พยาบาล</span>
+      </div>
+      <div class="placeholder">[ เนื้อหาหน้า ]</div>
+    </div>
+  </div>
+
+  <!-- แบบ 2 -->
+  <div class="section">
+    <div class="section-title">แบบ 2 — Bottom Tab Bar</div>
+    <div class="section-desc">แถบด้านล่างเหมือน native app · เข้าถึงง่าย · นิ้วโป้งถึง</div>
+    <div class="phone">
+      <div class="phone-header">
+        <span>🏠</span>
+        <div class="title">🌳 ทุเรียนหลังบ้าน</div>
+        <span>🌙</span>
+      </div>
+      <div class="style2-content">
+        <div class="placeholder">[ เนื้อหาหน้า ]</div>
+      </div>
+      <div class="style2">
+        <div class="tab active"><span class="ic pill">📍</span>ผัง</div>
+        <div class="tab"><span class="ic">🌿</span>ดูแล</div>
+        <div class="tab"><span class="ic">💰</span>รายจ่าย</div>
+        <div class="tab"><span class="ic">🔧</span>ปรับปรุง</div>
+        <div class="tab"><span class="ic">🛒</span>ซื้อขาย</div>
+        <div class="tab"><span class="ic">🏥</span>พยาบาล</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- แบบ 3 -->
+  <div class="section">
+    <div class="section-title">แบบ 3 — Icon Grid Cards (3×2)</div>
+    <div class="section-desc">การ์ดเล็ก 6 ใบ เรียง 3 คอลัมน์ · เห็นทุกเมนูพร้อมกัน · กดง่าย</div>
+    <div class="phone">
+      <div class="phone-header">
+        <span>🏠</span>
+        <div class="title">🌳 ทุเรียนหลังบ้าน</div>
+        <span>🌙</span>
+      </div>
+      <div class="style3">
+        <div class="card active"><div class="ic">📍</div><div class="label">ผังสวน</div></div>
+        <div class="card"><div class="ic">🌿</div><div class="label">การดูแล</div></div>
+        <div class="card"><div class="ic">💰</div><div class="label">รายจ่าย</div></div>
+        <div class="card"><div class="ic">🔧</div><div class="label">ปรับปรุง</div></div>
+        <div class="card"><div class="ic">🛒</div><div class="label">ซื้อขาย</div></div>
+        <div class="card"><div class="ic">🏥</div><div class="label">พยาบาล</div></div>
+      </div>
+      <div class="placeholder">[ เนื้อหาหน้า ]</div>
+    </div>
+  </div>
+
+  <!-- แบบ 4 -->
+  <div class="section">
+    <div class="section-title">แบบ 4 — Segmented Top Bar (เต็มจอ)</div>
+    <div class="section-desc">แบ่ง 6 ช่องเท่ากัน ไอคอน+ชื่อ · เห็นทุกเมนูไม่ต้อง scroll · underline active</div>
+    <div class="phone">
+      <div class="phone-header">
+        <span>🏠</span>
+        <div class="title">🌳 ทุเรียนหลังบ้าน</div>
+        <span>🌙</span>
+      </div>
+      <div class="style4">
+        <div class="seg active"><span class="ic">📍</span>ผัง</div>
+        <div class="seg"><span class="ic">🌿</span>ดูแล</div>
+        <div class="seg"><span class="ic">💰</span>รายจ่าย</div>
+        <div class="seg"><span class="ic">🔧</span>ปรับปรุง</div>
+        <div class="seg"><span class="ic">🛒</span>ซื้อขาย</div>
+        <div class="seg"><span class="ic">🏥</span>พยาบาล</div>
+      </div>
+      <div class="placeholder">[ เนื้อหาหน้า ]</div>
+    </div>
+  </div>
+
+  <!-- แบบ 5 -->
+  <div class="section">
+    <div class="section-title">แบบ 5 — Floating Dock (ลอยด้านล่าง)</div>
+    <div class="section-desc">แถบลอยมุมล่าง blur background · ดูทันสมัย · ไม่บังเนื้อหามาก</div>
+    <div class="phone">
+      <div class="phone-header">
+        <span>🏠</span>
+        <div class="title">🌳 ทุเรียนหลังบ้าน</div>
+        <span>🌙</span>
+      </div>
+      <div class="style5-wrap">
+        <div class="placeholder" style="height:100%;">[ เนื้อหาหน้า ]</div>
+        <div class="style5">
+          <div class="dock-item active"><span class="ic">📍</span>ผัง</div>
+          <div class="dock-item"><span class="ic">🌿</span>ดูแล</div>
+          <div class="dock-item"><span class="ic">💰</span>รายจ่าย</div>
+          <div class="dock-item"><span class="ic">🔧</span>ปรับปรุง</div>
+          <div class="dock-item"><span class="ic">🛒</span>ซื้อขาย</div>
+          <div class="dock-item"><span class="ic">🏥</span>พยาบาล</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

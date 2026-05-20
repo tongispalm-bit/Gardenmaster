@@ -1,18 +1,42 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from '@/lib/useTheme';
 import { useAuth } from '@/lib/useAuth';
 import { getOrchards, type Orchard } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import { Moon, Sun, LeafIcon, Settings, LogOut } from 'lucide-react';
+import {
+  Moon,
+  Sun,
+  LeafIcon,
+  Settings,
+  LogOut,
+  Search,
+  ChevronRight,
+  TreeDeciduous,
+  Plus,
+} from 'lucide-react';
 import SettingsModal from './_components/SettingsModal';
+import BottomNav from './_components/BottomNav';
 
 const ORCHARDS_PRESET = [
-  { name: 'สวนมังคุด', color: '#9b59b6', icon: '🍇', colorClass: 'bg-purple-600' },
-  { name: 'ทุเรียนหลังบ้าน', color: '#27ae60', icon: '🌳', colorClass: 'bg-green-600' },
-  { name: 'ทุเรียนหมื่นซ่อง', color: '#f39c12', icon: '🍊', colorClass: 'bg-yellow-600' },
+  { name: 'สวนมังคุด', color: '#9b59b6', icon: '🍇' },
+  { name: 'ทุเรียนหลังบ้าน', color: '#27ae60', icon: '🌳' },
+  { name: 'ทุเรียนหมื่นซ่อง', color: '#f39c12', icon: '🍊' },
 ];
+
+// สีพื้นหลัง icon ของแต่ละสวน (ชมพู/เขียว/ส้ม)
+function getIconBg(orchard: Orchard): string {
+  if (orchard.name.includes('มังคุด')) return 'bg-purple-100 dark:bg-purple-900/40';
+  if (orchard.name.includes('หลังบ้าน')) return 'bg-emerald-100 dark:bg-emerald-900/40';
+  return 'bg-orange-100 dark:bg-orange-900/40';
+}
+
+function getOrchardTag(orchard: Orchard): string {
+  if (orchard.name.includes('หลังบ้าน')) return 'ทุเรียน · 91 ต้น · 📍 ผังสวน';
+  if (orchard.name.includes('หมื่นซ่อง')) return 'ทุเรียน';
+  return 'มังคุด';
+}
 
 export default function Home() {
   const { isDark, toggleTheme, mounted } = useTheme();
@@ -22,8 +46,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<'all' | 'durian' | 'mangosteen' | 'fav'>('all');
 
-  // Auth guard — ไม่มี session → redirect ไป /login
+  // Auth guard
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace('/login');
@@ -63,6 +89,18 @@ export default function Home() {
     }
   };
 
+  const filteredOrchards = useMemo(() => {
+    let list = orchards;
+    if (filter === 'durian') list = list.filter((o) => o.name.includes('ทุเรียน'));
+    if (filter === 'mangosteen') list = list.filter((o) => o.name.includes('มังคุด'));
+    if (filter === 'fav') list = list.filter((o) => o.name.includes('หลังบ้าน'));
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter((o) => o.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [orchards, filter, searchTerm]);
+
   if (!mounted || authLoading || !user || loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col items-center justify-center gap-4">
@@ -88,29 +126,36 @@ export default function Home() {
     );
   }
 
+  const initials = (user.displayName || user.username).slice(0, 1).toUpperCase();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-emerald-600 to-emerald-500 dark:from-emerald-900 dark:to-emerald-800 text-white px-6 pt-8 pb-12">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-24">
+      {/* Header — gradient เขียว */}
+      <header className="bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-700 dark:to-emerald-900 text-white px-5 pt-6 pb-8 rounded-b-3xl shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <LeafIcon size={32} className="fill-white" />
-            <h1 className="text-3xl font-extrabold">Garden Master</h1>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/25 border-2 border-white/80 flex items-center justify-center font-extrabold">
+              {initials}
+            </div>
+            <div>
+              <p className="text-xs opacity-80">ยินดีต้อนรับ</p>
+              <p className="font-bold text-sm">{user.displayName || user.username}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
               title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
             >
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <button
               onClick={() => setSettingsOpen(true)}
-              className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
               title="ตั้งค่าระบบ"
             >
-              <Settings size={20} />
+              <Settings size={16} />
             </button>
             <button
               onClick={() => {
@@ -119,46 +164,113 @@ export default function Home() {
                   router.replace('/login');
                 }
               }}
-              className="p-2.5 rounded-full bg-white/20 hover:bg-red-500/40 transition-colors"
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
               title="ออกจากระบบ"
             >
-              <LogOut size={20} />
+              <LogOut size={16} />
             </button>
           </div>
         </div>
-        <div className="flex items-baseline justify-between flex-wrap gap-2">
-          <p className="text-emerald-50 text-lg">สวัสดี {user.displayName}</p>
-          <p className="text-emerald-100 text-sm">เลือกสวนที่ต้องการจัดการ</p>
+
+        <div>
+          <h1 className="text-2xl font-extrabold leading-tight">
+            วันนี้คุณดูแล<br />สวนไหนบ้าง? 🌿
+          </h1>
+          <p className="text-sm opacity-85 mt-1">
+            {orchards.length} สวน · 91 ต้น · พร้อมรับการดูแล
+          </p>
+        </div>
+
+        {/* Search */}
+        <div className="relative mt-4">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="ค้นหาสวน, ต้นไม้..."
+            className="w-full pl-10 pr-4 py-3 bg-white/95 dark:bg-slate-800 rounded-2xl text-sm text-slate-800 dark:text-slate-200 outline-none focus:ring-2 ring-white/50 placeholder:text-slate-400"
+          />
         </div>
       </header>
 
-      {/* Orchards Grid */}
-      <div className="px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          {orchards.map((orchard) => (
-            <button
-              key={orchard.id}
-              onClick={() => router.push(`/orchard?id=${orchard.id}`)}
-              className="group relative overflow-hidden rounded-2xl p-8 text-white transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg"
-              style={{
-                backgroundColor: orchard.color,
-              }}
-            >
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
-              <div className="relative z-10 text-center">
-                <div className="text-6xl mb-4">{orchard.icon}</div>
-                <h2 className="text-2xl font-bold mb-2">{orchard.name}</h2>
-                <p className="text-white/80 text-sm">คลิกเพื่อจัดการ</p>
-              </div>
-            </button>
-          ))}
-        </div>
+      {/* Filter chips */}
+      <div className="flex gap-2 px-5 py-4 overflow-x-auto scrollbar-hide">
+        {[
+          { id: 'all', label: 'ทั้งหมด' },
+          { id: 'durian', label: 'ทุเรียน' },
+          { id: 'mangosteen', label: 'มังคุด' },
+          { id: 'fav', label: '⭐ ที่ชอบ' },
+        ].map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id as typeof filter)}
+            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+              filter === f.id
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
-      {/* Footer Info */}
-      <div className="px-6 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
-        <p>💡 เคล็ดลับ: บันทึกข้อมูลแต่ละสวนแยกกันเพื่อการจัดการที่ดีขึ้น</p>
+      {/* Section title */}
+      <div className="flex items-center justify-between px-5 py-2">
+        <h2 className="font-bold text-slate-800 dark:text-white">สวนของคุณ</h2>
+        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+          {filteredOrchards.length} รายการ
+        </span>
       </div>
+
+      {/* List */}
+      <div className="px-5 space-y-2.5">
+        {filteredOrchards.length === 0 ? (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center text-slate-500 dark:text-slate-400">
+            <TreeDeciduous size={32} className="mx-auto mb-2 opacity-50" />
+            <p className="text-sm">ไม่พบสวนที่ค้นหา</p>
+          </div>
+        ) : (
+          filteredOrchards.map((orchard) => {
+            const isFav = orchard.name.includes('หลังบ้าน');
+            return (
+              <button
+                key={orchard.id}
+                onClick={() => router.push(`/orchard?id=${orchard.id}`)}
+                className="w-full bg-white dark:bg-slate-800 rounded-2xl p-3.5 flex items-center gap-3.5 shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all border border-slate-100 dark:border-slate-700"
+              >
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 ${getIconBg(orchard)}`}>
+                  {orchard.icon}
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="font-bold text-slate-800 dark:text-white truncate flex items-center gap-1.5">
+                    {orchard.name}
+                    {isFav && <span className="text-amber-500">⭐</span>}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 truncate">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block flex-shrink-0"></span>
+                    {getOrchardTag(orchard)}
+                  </p>
+                </div>
+                <ChevronRight size={20} className="text-slate-400 flex-shrink-0" />
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      {/* FAB */}
+      <button
+        className="fixed bottom-24 right-5 w-14 h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/40 flex items-center justify-center z-30 transition-transform active:scale-95"
+        title="เพิ่มข้อมูลใหม่"
+        onClick={() => alert('ยังไม่เปิดใช้งาน — coming soon')}
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
+
+      {/* Bottom Nav */}
+      <BottomNav activeId="home" onProfileClick={() => setSettingsOpen(true)} />
 
       {/* Settings Modal */}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

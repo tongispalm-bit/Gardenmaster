@@ -97,7 +97,7 @@ export default function ExpenseClient() {
         title="รายจ่ายทั่วไป"
         Icon={BarChart3}
       />
-      {isDurianBackyard && <SubMenuTabs activeTab="expense" orchardId={orchardId} />}
+      {isDurianBackyard && null}
 
       <div className="px-6 py-6 max-w-4xl mx-auto">
         {/* Add Form */}

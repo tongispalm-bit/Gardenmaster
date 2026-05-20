@@ -2,17 +2,40 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  getOrchards,
-  getCareRecords,
-  deleteCareRecord,
-  addCareRecord,
-  type Orchard,
-  type CareRecord,
-} from '@/lib/firebase';
-import { LeafIcon } from 'lucide-react';
+import { getOrchards, type Orchard } from '@/lib/firebase';
+import { LeafIcon, Droplets, Leaf, Bug } from 'lucide-react';
 import SubMenuTabs from '../_components/SubMenuTabs';
 import SubPageHeader from '../_components/SubPageHeader';
+
+const CARE_MENU = [
+  {
+    id: 'water',
+    path: '/orchard/care/water',
+    label: 'รดน้ำ',
+    Icon: Droplets,
+    iconColor: 'text-blue-500',
+    iconBg: 'bg-blue-100 dark:bg-blue-900/40',
+    borderColor: 'border-blue-200 dark:border-blue-800',
+  },
+  {
+    id: 'fertilize',
+    path: '/orchard/care/fertilize',
+    label: 'ใส่ปุ๋ย',
+    Icon: Leaf,
+    iconColor: 'text-emerald-500',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    borderColor: 'border-emerald-200 dark:border-emerald-800',
+  },
+  {
+    id: 'spray',
+    path: '/orchard/care/spray',
+    label: 'พ่นยา',
+    Icon: Bug,
+    iconColor: 'text-orange-500',
+    iconBg: 'bg-orange-100 dark:bg-orange-900/40',
+    borderColor: 'border-orange-200 dark:border-orange-800',
+  },
+];
 
 export default function CareClient() {
   const router = useRouter();
@@ -20,20 +43,7 @@ export default function CareClient() {
   const orchardId = searchParams.get('id') || '';
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [careRecords, setCareRecords] = useState<CareRecord[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [careForm, setCareForm] = useState<{
-    date: string;
-    type: 'water' | 'fertilize' | 'pesticide';
-    plant: string;
-    note: string;
-  }>({
-    date: new Date().toISOString().split('T')[0],
-    type: 'water',
-    plant: '',
-    note: '',
-  });
 
   useEffect(() => {
     if (!orchardId) {
@@ -48,33 +58,10 @@ export default function CareClient() {
       const orchards = await getOrchards();
       const found = orchards.find((o) => o.id === orchardId);
       setOrchard(found || null);
-
-      const data = await getCareRecords(orchardId);
-      setCareRecords(data);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAdd = async () => {
-    if (!careForm.date || !careForm.plant) return;
-    try {
-      await addCareRecord({
-        ...careForm,
-        orchardId,
-        createdAt: Date.now(),
-      });
-      setCareForm({
-        date: new Date().toISOString().split('T')[0],
-        type: 'water',
-        plant: '',
-        note: '',
-      });
-      await loadData();
-    } catch (error) {
-      alert('บันทึกไม่สำเร็จ!');
     }
   };
 
@@ -98,95 +85,30 @@ export default function CareClient() {
         title="การดูแล"
         Icon={LeafIcon}
       />
-      {isDurianBackyard && <SubMenuTabs activeTab="care" orchardId={orchardId} />}
+      {isDurianBackyard && null}
 
-      <div className="px-6 py-6 max-w-4xl mx-auto">
-        {/* Add Form */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm mb-6 border border-slate-200 dark:border-slate-700">
-          <h2 className="text-lg font-bold mb-4 text-emerald-800 dark:text-emerald-400">
-            บันทึกการดูแล
-          </h2>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                type="date"
-                value={careForm.date}
-                onChange={(e) =>
-                  setCareForm({ ...careForm, date: e.target.value })
-                }
-                className="p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-emerald-500"
-              />
-              <select
-                value={careForm.type}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === 'water' || val === 'fertilize' || val === 'pesticide') {
-                    setCareForm({ ...careForm, type: val });
-                  }
-                }}
-                className="p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-emerald-500"
-              >
-                <option value="water">💧 รดน้ำ</option>
-                <option value="fertilize">🌿 ใส่ปุ๋ย</option>
-                <option value="pesticide">🐛 ฉีดยา</option>
-              </select>
-            </div>
-            <input
-              type="text"
-              placeholder="ชื่อต้นไม้"
-              value={careForm.plant}
-              onChange={(e) =>
-                setCareForm({ ...careForm, plant: e.target.value })
-              }
-              className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-emerald-500"
-            />
-            <input
-              type="text"
-              placeholder="หมายเหตุ"
-              value={careForm.note}
-              onChange={(e) =>
-                setCareForm({ ...careForm, note: e.target.value })
-              }
-              className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-emerald-500"
-            />
-            <button
-              onClick={handleAdd}
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-all"
-            >
-              บันทึกการดูแล
-            </button>
-          </div>
-        </div>
+      <div className="px-5 py-6 max-w-4xl mx-auto">
+        <h2 className="font-bold text-slate-800 dark:text-white mb-4">เลือกประเภทการดูแล</h2>
 
-        {/* Records List */}
-        <div className="space-y-3">
-          {careRecords.length === 0 ? (
-            <div className="text-center py-10 text-slate-500 dark:text-slate-400">
-              ยังไม่มีบันทึกการดูแล
-            </div>
-          ) : (
-            careRecords.map((record) => (
-              <div
-                key={record.id}
-                className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex justify-between items-center"
+        {/* Grid 3 คอลัมน์ */}
+        <div className="grid grid-cols-3 gap-3">
+          {CARE_MENU.map((item) => {
+            const Icon = item.Icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => router.push(`${item.path}?id=${orchardId}`)}
+                className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 ${item.borderColor} bg-white dark:bg-slate-800 hover:scale-[1.03] active:scale-[0.97] transition-all shadow-sm hover:shadow-md`}
               >
-                <div>
-                  <p className="font-bold text-slate-800 dark:text-white">
-                    {record.plant}
-                  </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {record.date} • {record.note}
-                  </p>
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${item.iconBg}`}>
+                  <Icon size={28} className={item.iconColor} strokeWidth={2} />
                 </div>
-                <button
-                  onClick={() => deleteCareRecord(record.id).then(loadData)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  ✕
-                </button>
-              </div>
-            ))
-          )}
+                <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

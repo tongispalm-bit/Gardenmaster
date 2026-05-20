@@ -1,8 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import ComingSoonClient from '../_components/ComingSoonClient';
-import { ShoppingCart } from 'lucide-react';
+import SalesClient from './SalesClient';
 
 export default function SalesPage() {
   return (
@@ -11,12 +10,7 @@ export default function SalesPage() {
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
       </div>
     }>
-      <ComingSoonClient
-        tabId="sales"
-        title="การซื้อขาย"
-        Icon={ShoppingCart}
-        accentClass="text-pink-500"
-      />
+      <SalesClient />
     </Suspense>
   );
 }

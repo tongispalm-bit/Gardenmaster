@@ -1,51 +1,123 @@
 # Project Structure
 
 ```
-src/
-├── app/                        # Next.js App Router
-│   ├── layout.tsx              # Root layout — fonts, dark mode inline script, global CSS
-│   ├── page.tsx                # Home page — orchard list/selector
-│   ├── globals.css             # Global styles (Tailwind base)
-│   └── orchard/
-│       ├── layout.tsx          # Orchard section layout (disables static caching)
-│       └── [orchardId]/
-│           └── page.tsx        # Orchard detail — care records, transactions, menu tabs
-└── lib/
-    ├── firebase.ts             # Firestore client, all data types, all CRUD functions
-    ├── useTheme.ts             # Dark/light mode hook (reads/writes localStorage + html class)
-    └── storage.ts              # Legacy localStorage layer — do not use for new features
+d:\Gaedenmaster\
+│
+├── .env                    # Environment variables (gitignored)
+├── .env.local              # Local env overrides (gitignored)
+├── .gitignore
+├── firebase.json           # Firebase Hosting + Firestore config
+├── firestore.indexes.json  # Firestore indexes
+├── firestore.rules         # Firestore security rules
+├── next.config.ts          # Next.js config (static export)
+├── package.json            # Dependencies + scripts
+├── package-lock.json
+├── postcss.config.mjs      # PostCSS (Tailwind)
+├── tailwind.config.ts      # Tailwind CSS config
+├── tsconfig.json           # TypeScript config
+├── eslint.config.mjs       # ESLint flat config
+│
+├── .kiro/steering/         # Kiro steering files
+│   ├── product.md          # Product overview
+│   ├── structure.md        # This file
+│   └── tech.md             # Tech stack details
+│
+├── doc/                    # Documentation
+│   ├── PROJECT_SUMMARY.md  # Full project summary
+│   ├── ปรับปรุง.md          # Improvement notes
+│   ├── ผังต้นทุเรียน.md     # Farm map spec
+│   └── ui-mockups/         # UI design reference
+│       ├── index.html      # Mockup gallery
+│       └── 08-mobile-bottom-nav.html  # Selected design
+│
+└── src/                    # Source code
+    ├── app/                # Next.js App Router
+    │   ├── layout.tsx      # Root layout (fonts, dark mode script)
+    │   ├── page.tsx        # Home — orchard list (Mobile-first UI)
+    │   ├── globals.css     # Global styles (Tailwind base)
+    │   │
+    │   ├── _components/    # Shared components (home-level)
+    │   │   ├── BottomNav.tsx       # Mobile bottom navigation bar
+    │   │   └── SettingsModal.tsx   # Settings + user management modal
+    │   │
+    │   ├── login/          # Login page
+    │   │   ├── page.tsx
+    │   │   └── LoginClient.tsx
+    │   │
+    │   └── orchard/        # Orchard section
+    │       ├── page.tsx              # Wrapper (Suspense)
+    │       ├── layout.tsx            # Orchard layout
+    │       ├── OrchardDetailClient.tsx  # Menu cards (normal orchards)
+    │       │                            # Redirects to farm-map for ทุเรียนหลังบ้าน
+    │       │
+    │       ├── _components/          # Shared orchard components
+    │       │   ├── SubMenuTabs.tsx       # Tab bar (ทุเรียนหลังบ้าน)
+    │       │   ├── SubPageHeader.tsx     # Header + Home/Back buttons
+    │       │   └── ComingSoonClient.tsx  # "Coming soon" placeholder
+    │       │
+    │       ├── care/         # 🌿 การดูแล
+    │       │   ├── page.tsx
+    │       │   └── CareClient.tsx
+    │       │
+    │       ├── expense/      # 📊 รายจ่ายทั่วไป
+    │       │   ├── page.tsx
+    │       │   └── ExpenseClient.tsx
+    │       │
+    │       ├── farm-map/     # 📍 ผังสวน (เฉพาะทุเรียนหลังบ้าน)
+    │       │   ├── page.tsx
+    │       │   └── FarmMapClient.tsx
+    │       │
+    │       ├── upgrade/      # 🔧 ค่าปรับปรุง (Coming Soon)
+    │       │   └── page.tsx
+    │       │
+    │       ├── sales/        # 🛒 การซื้อขาย (Coming Soon)
+    │       │   └── page.tsx
+    │       │
+    │       └── hospital/     # 🏥 ห้องพยาบาล (Coming Soon)
+    │           └── page.tsx
+    │
+    └── lib/                # Shared utilities
+        ├── firebase.ts     # Firestore client, types, all CRUD + auth functions
+        ├── useAuth.ts      # Auth session hook (localStorage)
+        └── useTheme.ts     # Dark/light mode hook
 ```
 
 ## Conventions
 
 ### Pages
-- All pages use `'use client'` — this is a fully client-rendered static export
-- Pages own their own data fetching via `useEffect` + async functions from `firebase.ts`
-- Loading and error states are handled inline within the page component
+- All pages use `'use client'` — fully client-rendered static export
+- Pages fetch data via `useEffect` + async functions from `firebase.ts`
+- Loading and error states handled inline
 
 ### Data Layer (`src/lib/firebase.ts`)
-- All Firestore types are exported from here: `Orchard`, `CareRecord`, `Transaction`, `TreeProfile`, `FertilizerProfile`
-- All CRUD functions are async and exported from here
-- New collections and types should be added to this file
-- Client-side filtering is used for `orchardId` scoping (not Firestore `where` queries) — be aware of performance implications at scale
+- All Firestore types exported: `Orchard`, `CareRecord`, `Transaction`, `TreeProfile`, `AppUser`
+- All CRUD + auth functions are async and exported
+- New collections/types should be added to this file
 
 ### Styling
-- Tailwind utility classes only — no CSS modules, no styled-components
-- Dark mode uses the `dark:` variant (class strategy via `dark` on `<html>`)
-- Rounded cards: `rounded-2xl` or `rounded-xl`
-- Inputs: `bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2`
-- Primary action buttons: full-width, `rounded-xl font-bold`, colored per section
+- Tailwind utility classes only
+- Dark mode via `dark:` variant (class strategy)
+- Rounded cards: `rounded-2xl`
+- Inputs: `bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2`
 
 ### Component Organization
-- No `components/` directory yet — UI is colocated in page files
-- When extracting components, place them in `src/components/` and import via `@/components/`
+- `src/app/_components/` — shared across all pages (BottomNav, SettingsModal)
+- `src/app/orchard/_components/` — shared within orchard section
 
 ### Routing
-- `/` — orchard selector (home)
-- `/orchard/[orchardId]` — orchard detail with tabbed menu
+- `/` — home (orchard list)
+- `/login` — login page
+- `/orchard?id=xxx` — orchard menu (or redirect to farm-map)
+- `/orchard/care?id=xxx` — care records
+- `/orchard/expense?id=xxx` — expenses
+- `/orchard/farm-map?id=xxx` — farm map (ทุเรียนหลังบ้าน only)
+- `/orchard/upgrade?id=xxx` — coming soon
+- `/orchard/sales?id=xxx` — coming soon
+- `/orchard/hospital?id=xxx` — coming soon
 
 ### Adding New Features
-1. Define the TypeScript type in `src/lib/firebase.ts`
+1. Define TypeScript type in `src/lib/firebase.ts`
 2. Add Firestore CRUD functions in `src/lib/firebase.ts`
-3. Implement the UI in the relevant page (currently `[orchardId]/page.tsx` for orchard-scoped features)
-4. Menu tabs are defined in the `MENU_ITEMS` array in `[orchardId]/page.tsx`
+3. Create page folder under `src/app/orchard/` with `page.tsx` + `Client.tsx`
+4. Add to `SubMenuTabs.tsx` if it's a sub-menu for ทุเรียนหลังบ้าน
+5. Add to `OrchardDetailClient.tsx` MENU_ITEMS if it's for all orchards
