@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/lib/useTheme';
-import { ArrowLeft, Moon, Sun, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Moon, Sun } from 'lucide-react';
+import type { ComponentType } from 'react';
 
 type Props = {
   orchardName: string;
@@ -10,7 +11,7 @@ type Props = {
   orchardId: string;
   isDurianBackyard: boolean;
   title: string;
-  Icon: LucideIcon;
+  Icon: ComponentType<{ size?: number; className?: string }>;
 };
 
 export default function SubPageHeader({

@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, query, orderBy, where } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, query, orderBy, where, getDocsFromServer } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAXAgFYqnLfvqEQJw6Y4_QoavDo6yCOhI",
@@ -329,7 +329,8 @@ export async function addHospitalRecord(record: Omit<HospitalRecord, 'id'>) {
 }
 
 export async function getHospitalRecords(orchardId?: string) {
-  const snapshot = await getDocs(collection(db, 'hospitalRecords'));
+  // ใช้ getDocsFromServer เพื่อบังคับดึงจาก Firestore server ไม่ใช่ cache
+  const snapshot = await getDocsFromServer(collection(db, 'hospitalRecords'));
   const records = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as HospitalRecord[];
   const filtered = orchardId ? records.filter(r => r.orchardId === orchardId) : records;
   return filtered.sort((a, b) => b.createdAt - a.createdAt);
@@ -501,4 +502,108 @@ export async function getSprayRecords(orchardId: string): Promise<SprayRecord[]>
 
 export async function deleteSprayRecord(id: string) {
   await deleteDoc(doc(db, 'sprayRecords', id));
+}
+
+// ── General Expense (รายจ่ายทั่วไป) ─────────────────────────
+export type WorkType =
+  | 'trim_tree'
+  | 'prune_branch'
+  | 'mow'
+  | 'spray'
+  | 'water'
+  | 'trim_flower'
+  | 'trim_fruit'
+  | 'cut_rope'
+  | 'other';
+
+export const WORK_TYPE_LABEL: Record<WorkType, string> = {
+  trim_tree:    'แต่งต้น',
+  prune_branch: 'สอยแขนง',
+  mow:          'ตัดหญ้า',
+  spray:        'พ่นยา',
+  water:        'ให้น้ำ',
+  trim_flower:  'แต่งดอก',
+  trim_fruit:   'แต่งลูก',
+  cut_rope:     'ตัดเชือก',
+  other:        'อื่นๆ',
+};
+
+export type GeneralExpense = {
+  id: string;
+  orchardId: string;
+  date: string;
+  workType: WorkType;
+  customWork: string;   // ใช้เมื่อ workType === 'other'
+  amount: number;
+  note: string;
+  createdAt: number;
+};
+
+export async function addGeneralExpense(record: Omit<GeneralExpense, 'id'>) {
+  const docRef = await addDoc(collection(db, 'generalExpenses'), record);
+  return docRef.id;
+}
+
+export async function getGeneralExpenses(orchardId: string): Promise<GeneralExpense[]> {
+  const snapshot = await getDocs(collection(db, 'generalExpenses'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as GeneralExpense[];
+  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function deleteGeneralExpense(id: string) {
+  await deleteDoc(doc(db, 'generalExpenses', id));
+}
+
+// ── Upgrade Expense (ค่าปรับปรุงสวน) ────────────────────────
+export type UpgradeExpense = {
+  id: string;
+  orchardId: string;
+  date: string;
+  item: string;       // รายการ
+  amount: number;     // ราคา
+  note: string;
+  createdAt: number;
+};
+
+export async function addUpgradeExpense(record: Omit<UpgradeExpense, 'id'>) {
+  const docRef = await addDoc(collection(db, 'upgradeExpenses'), record);
+  return docRef.id;
+}
+
+export async function getUpgradeExpenses(orchardId: string): Promise<UpgradeExpense[]> {
+  const snapshot = await getDocs(collection(db, 'upgradeExpenses'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as UpgradeExpense[];
+  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function deleteUpgradeExpense(id: string) {
+  await deleteDoc(doc(db, 'upgradeExpenses', id));
+}
+
+// ── Durian Fruit Record (ทำลูกทุเรียน) ──────────────────────
+export type DurianFruitRecord = {
+  id: string;
+  orchardId: string;
+  treeId: string;
+  treeNumber: string;
+  batch: string;            // รุ่นที่ 1 / 2 / 3
+  pollinationDate: string;
+  expectedHarvestDate: string;
+  note: string;
+  createdAt: number;
+};
+
+export async function addDurianFruitRecord(record: Omit<DurianFruitRecord, 'id'>) {
+  const docRef = await addDoc(collection(db, 'durianFruitRecords'), record);
+  return docRef.id;
+}
+
+export async function getDurianFruitRecords(orchardId: string): Promise<DurianFruitRecord[]> {
+  const snapshot = await getDocs(collection(db, 'durianFruitRecords'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as DurianFruitRecord[];
+  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function deleteDurianFruitRecord(id: string) {
+  await deleteDoc(doc(db, 'durianFruitRecords', id));
 }

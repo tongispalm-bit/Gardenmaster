@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   getOrchards,
@@ -9,6 +9,7 @@ import {
   addHospitalRecord,
   updateHospitalRecord,
   deleteHospitalRecord,
+  updateTreeProfile,
   type Orchard,
   type TreeProfile,
   type HospitalRecord,
@@ -30,6 +31,20 @@ const SEVERITY_COLOR: Record<Severity, string> = {
   moderate: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   severe: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
+
+const EMPTY_FORM = {
+  treeId: '',
+  treeNumber: '',
+  dateFound: '',
+  symptoms: '',
+  photos: [] as string[],
+  severity: 'mild' as Severity,
+  medicines: [{ name: '', amount: '' }] as MedicineItem[],
+  treatmentResult: null as TreatmentResult | null,
+  recoveryDate: '',
+  status: 'treating' as HospitalStatus,
+  note: '',
+};
 const RESULT_LABEL: Record<TreatmentResult, string> = {
   better: '✅ ดีขึ้น',
   same: '➡️ ไม่เปลี่ยน',
@@ -44,7 +59,7 @@ export default function HospitalClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const preselectedTreeId = searchParams.get('treeId') || '';
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [trees, setTrees] = useState<TreeProfile[]>([]);
@@ -56,20 +71,10 @@ export default function HospitalClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form state
-  const emptyForm = {
-    treeId: '',
-    treeNumber: '',
+  const [form, setForm] = useState(() => ({
+    ...EMPTY_FORM,
     dateFound: new Date().toISOString().split('T')[0],
-    symptoms: '',
-    photos: [] as string[],
-    severity: 'mild' as Severity,
-    medicines: [{ name: '', amount: '' }] as MedicineItem[],
-    treatmentResult: null as TreatmentResult | null,
-    recoveryDate: '',
-    status: 'treating' as HospitalStatus,
-    note: '',
-  };
-  const [form, setForm] = useState(emptyForm);
+  }));
 
   useEffect(() => {
     if (!orchardId) { router.push('/'); return; }
@@ -86,6 +91,15 @@ export default function HospitalClient() {
       setOrchard(orchards.find(o => o.id === orchardId) || null);
       setTrees(treeData);
       setRecords(recordData);
+
+      // Auto-select ต้นถ้ามี treeId จาก query string
+      if (preselectedTreeId && treeData.length > 0) {
+        const preTree = treeData.find(t => t.id === preselectedTreeId);
+        if (preTree) {
+          setForm(prev => ({ ...prev, treeId: preTree.id, treeNumber: preTree.treeNumber }));
+          setShowForm(true);
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -161,7 +175,24 @@ export default function HospitalClient() {
       } else {
         await addHospitalRecord(payload);
       }
-      setForm(emptyForm);
+
+      // Auto-update TreeProfile status
+      if (form.treeId) {
+        if (payload.status === 'treating') {
+          // กำลังรักษา → เปลี่ยนเป็นเฝ้าระวัง
+          await updateTreeProfile(form.treeId, { status: 'watch', updatedAt: Date.now() });
+        } else if (payload.status === 'recovered') {
+          // หายแล้ว → ดึงข้อมูลล่าสุดจาก Firestore server แล้วตรวจว่ายังมีบันทึกอื่นที่กำลังรักษาอยู่ไหม
+          const freshRecords = await getHospitalRecords(orchardId);
+          const stillTreating = freshRecords.some(
+            r => r.treeId === form.treeId && r.status === 'treating'
+          );
+          if (!stillTreating) {
+            await updateTreeProfile(form.treeId, { status: 'normal', updatedAt: Date.now() });
+          }
+        }
+      }
+      setForm({ ...EMPTY_FORM, dateFound: new Date().toISOString().split('T')[0] });
       setShowForm(false);
       setEditingId(null);
       await loadData();
@@ -229,7 +260,7 @@ export default function HospitalClient() {
         {/* ปุ่มเพิ่ม */}
         {!showForm && (
           <button
-            onClick={() => { setForm(emptyForm); setEditingId(null); setShowForm(true); }}
+            onClick={() => { setForm({ ...EMPTY_FORM, dateFound: new Date().toISOString().split('T')[0] }); setEditingId(null); setShowForm(true); }}
             className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all"
           >
             <Plus size={18} /> บันทึกอาการใหม่
@@ -253,7 +284,13 @@ export default function HospitalClient() {
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">เลือกต้น <span className="text-red-500">*</span></label>
                 {trees.length === 0 ? (
-                  <p className="text-xs text-slate-500 p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">ยังไม่มีข้อมูลต้นไม้ — กรอกข้อมูลในผังสวนก่อน</p>
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">ยังไม่มีข้อมูลต้น — กรอกข้อมูลในผังสวนก่อน</p>
+                    <button type="button" onClick={() => router.push(`/orchard/farm-map?id=${orchardId}`)}
+                      className="text-xs font-bold text-amber-700 dark:text-amber-400 underline">
+                      → ไปผังสวน
+                    </button>
+                  </div>
                 ) : (
                   <select
                     value={form.treeId}
@@ -262,7 +299,7 @@ export default function HospitalClient() {
                   >
                     <option value="">-- เลือกต้น --</option>
                     {trees.map(t => (
-                      <option key={t.id} value={t.id}>{t.treeNumber} · {t.variety || '—'}</option>
+                      <option key={t.id} value={t.id}>{t.treeNumber}{t.variety ? ` · ${t.variety}` : ''}</option>
                     ))}
                   </select>
                 )}
@@ -313,14 +350,19 @@ export default function HospitalClient() {
                     </div>
                   ))}
                   {form.photos.length < 6 && (
-                    <button onClick={() => fileInputRef.current?.click()}
-                      className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-red-400 hover:text-red-400 transition-colors">
+                    <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-red-400 hover:text-red-400 transition-colors cursor-pointer">
                       <Camera size={18} />
                       <span className="text-[9px] mt-0.5">เพิ่ม</span>
-                    </button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handlePhotos}
+                      />
+                    </label>
                   )}
                 </div>
-                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotos} />
               </div>
 
               {/* ยาที่ใช้ */}

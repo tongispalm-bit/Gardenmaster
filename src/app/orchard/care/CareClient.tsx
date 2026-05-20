@@ -3,17 +3,25 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getOrchards, type Orchard } from '@/lib/firebase';
-import { LeafIcon, Droplets, Leaf, Bug } from 'lucide-react';
+import { LeafIcon, Leaf, Bug, Droplets, Sprout } from 'lucide-react';
 import SubMenuTabs from '../_components/SubMenuTabs';
 import SubPageHeader from '../_components/SubPageHeader';
 
-const CARE_MENU = [
+type CareMenuItem = {
+  id: string;
+  path: string;
+  label: string;
+  renderIcon: (className: string) => React.ReactNode;
+  iconBg: string;
+  borderColor: string;
+};
+
+const CARE_MENU: CareMenuItem[] = [
   {
     id: 'water',
     path: '/orchard/care/water',
     label: 'รดน้ำ',
-    Icon: Droplets,
-    iconColor: 'text-blue-500',
+    renderIcon: (cls) => <Droplets size={28} className={cls} strokeWidth={2} />,
     iconBg: 'bg-blue-100 dark:bg-blue-900/40',
     borderColor: 'border-blue-200 dark:border-blue-800',
   },
@@ -21,8 +29,7 @@ const CARE_MENU = [
     id: 'fertilize',
     path: '/orchard/care/fertilize',
     label: 'ใส่ปุ๋ย',
-    Icon: Leaf,
-    iconColor: 'text-emerald-500',
+    renderIcon: (cls) => <Leaf size={28} className={cls} strokeWidth={2} />,
     iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
     borderColor: 'border-emerald-200 dark:border-emerald-800',
   },
@@ -30,10 +37,17 @@ const CARE_MENU = [
     id: 'spray',
     path: '/orchard/care/spray',
     label: 'พ่นยา',
-    Icon: Bug,
-    iconColor: 'text-orange-500',
+    renderIcon: (cls) => <Bug size={28} className={cls} strokeWidth={2} />,
     iconBg: 'bg-orange-100 dark:bg-orange-900/40',
     borderColor: 'border-orange-200 dark:border-orange-800',
+  },
+  {
+    id: 'durian-fruit',
+    path: '/orchard/care/durian-fruit',
+    label: 'ทำลูกทุเรียน',
+    renderIcon: (cls) => <Sprout size={28} className={cls} strokeWidth={2} />,
+    iconBg: 'bg-lime-100 dark:bg-lime-900/40',
+    borderColor: 'border-lime-200 dark:border-lime-800',
   },
 ];
 
@@ -91,24 +105,25 @@ export default function CareClient() {
         <h2 className="font-bold text-slate-800 dark:text-white mb-4">เลือกประเภทการดูแล</h2>
 
         {/* Grid 3 คอลัมน์ */}
-        <div className="grid grid-cols-3 gap-3">
-          {CARE_MENU.map((item) => {
-            const Icon = item.Icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => router.push(`${item.path}?id=${orchardId}`)}
-                className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 ${item.borderColor} bg-white dark:bg-slate-800 hover:scale-[1.03] active:scale-[0.97] transition-all shadow-sm hover:shadow-md`}
-              >
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${item.iconBg}`}>
-                  <Icon size={28} className={item.iconColor} strokeWidth={2} />
-                </div>
-                <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-3">
+          {CARE_MENU.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => router.push(`${item.path}?id=${orchardId}`)}
+              className={`flex flex-col items-center gap-3 p-5 rounded-2xl border-2 ${item.borderColor} bg-white dark:bg-slate-800 hover:scale-[1.03] active:scale-[0.97] transition-all shadow-sm hover:shadow-md`}
+            >
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${item.iconBg}`}>
+                {item.renderIcon(
+                  item.id === 'water' ? 'text-blue-500' :
+                  item.id === 'fertilize' ? 'text-emerald-500' :
+                  item.id === 'spray' ? 'text-orange-500' : 'text-lime-600'
+                )}
+              </div>
+              <span className="font-bold text-sm text-slate-700 dark:text-slate-200">
+                {item.label}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
     </div>

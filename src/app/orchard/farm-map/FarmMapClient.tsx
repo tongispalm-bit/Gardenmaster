@@ -7,8 +7,11 @@ import {
   getTreeProfiles,
   addTreeProfile,
   updateTreeProfile,
+  getHospitalRecords,
   type Orchard,
   type TreeProfile,
+  type HospitalRecord,
+  type Severity,
 } from '@/lib/firebase';
 import { X, Home } from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
@@ -38,6 +41,13 @@ const STATUS_META: Record<Status, { label: string; bg: string; bgDark: string; i
   seedling: { label: 'ต้นกล้า',    bg: 'bg-sky-100',     bgDark: 'dark:bg-sky-900/40',     icon: '🌴', ring: 'ring-sky-400' },
 };
 
+// สีความรุนแรงจากห้องพยาบาล (override สีปกติ)
+const SEVERITY_BG: Record<Severity, { bg: string; bgDark: string; label: string }> = {
+  mild:     { bg: 'bg-yellow-200', bgDark: 'dark:bg-yellow-800/60', label: 'เล็กน้อย' },
+  moderate: { bg: 'bg-orange-200', bgDark: 'dark:bg-orange-800/60', label: 'ปานกลาง' },
+  severe:   { bg: 'bg-red-200',    bgDark: 'dark:bg-red-800/60',    label: 'รุนแรง' },
+};
+
 // กำหนดว่า cell ไหนมีต้น (ตามสเปก ข้อ 2)
 function hasTree(row: number, col: number): boolean {
   // R1C1–R1C8 ว่าง, R1C9 มีต้น
@@ -59,6 +69,7 @@ export default function FarmMapClient() {
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [trees, setTrees] = useState<TreeProfile[]>([]);
+  const [hospitalRecords, setHospitalRecords] = useState<HospitalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -89,6 +100,10 @@ export default function FarmMapClient() {
 
       const data = await getTreeProfiles(orchardId);
       setTrees(data);
+
+      const hospData = await getHospitalRecords(orchardId);
+      // เก็บเฉพาะที่ยังกำลังรักษา
+      setHospitalRecords(hospData.filter(r => r.status === 'treating'));
     } catch (error) {
       console.error('Error loading farm map:', error);
     } finally {
@@ -103,25 +118,40 @@ export default function FarmMapClient() {
     return m;
   }, [trees]);
 
+  // Hospital map: treeId → severity ที่รุนแรงที่สุด
+  const hospitalMap = useMemo(() => {
+    const severityOrder: Record<Severity, number> = { mild: 1, moderate: 2, severe: 3 };
+    const m = new Map<string, Severity>();
+    for (const r of hospitalRecords) {
+      const existing = m.get(r.treeId);
+      if (!existing || severityOrder[r.severity] > severityOrder[existing]) {
+        m.set(r.treeId, r.severity);
+      }
+    }
+    return m;
+  }, [hospitalRecords]);
+
   // Summary
   const summary = useMemo(() => {
     let total = 0;
     let normal = 0;
     let watch = 0;
     let seedling = 0;
+    let hospital = 0;
     for (let r = 1; r <= ROWS; r++) {
       for (let c = 1; c <= COLS; c++) {
         if (!hasTree(r, c)) continue;
         total++;
         const t = treeMap.get(`${r},${c}`);
         const status = t?.status ?? 'normal';
-        if (status === 'normal') normal++;
+        if (status === 'seedling') seedling++;
         else if (status === 'watch') watch++;
-        else if (status === 'seedling') seedling++;
+        else normal++;
+        if (t && hospitalMap.has(t.id)) hospital++;
       }
     }
-    return { total, normal, watch, seedling };
-  }, [treeMap]);
+    return { total, normal, watch, seedling, hospital };
+  }, [treeMap, hospitalMap]);
 
   const openEdit = (row: number, col: number) => {
     const existing = treeMap.get(`${row},${col}`);
@@ -130,7 +160,7 @@ export default function FarmMapClient() {
     if (existing) {
       setForm({
         treeNumber: existing.treeNumber,
-        status: existing.status,
+        status: existing.status as Status,
         variety: existing.variety || 'หมอนทอง',
         age: existing.age || 0,
         note: existing.note || '',
@@ -253,8 +283,13 @@ export default function FarmMapClient() {
           <SummaryCard label="เฝ้าระวัง" value={summary.watch} accent="text-rose-500 dark:text-rose-400" />
           <SummaryCard label="ต้นกล้า" value={summary.seedling} accent="text-sky-500 dark:text-sky-400" />
         </div>
+        {summary.hospital > 0 && (
+          <div className="flex items-center gap-2 mb-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
+            <span className="text-sm">🏥</span>
+            <span className="text-xs font-bold text-red-700 dark:text-red-400">กำลังรักษา {summary.hospital} ต้น</span>
+          </div>
+        )}
 
-        {/* Legend — เล็กลง */}
         <div className="flex flex-wrap gap-2 mb-3 text-xs">
           {(Object.keys(STATUS_META) as Status[]).map((k) => (
             <div key={k} className="flex items-center gap-1">
@@ -262,65 +297,85 @@ export default function FarmMapClient() {
               <span className="text-slate-600 dark:text-slate-400">{STATUS_META[k].icon} {STATUS_META[k].label}</span>
             </div>
           ))}
+          <span className="text-slate-400 dark:text-slate-500">|</span>
+          {(Object.keys(SEVERITY_BG) as Severity[]).map((k) => (
+            <div key={k} className="flex items-center gap-1">
+              <span className={`inline-block w-3 h-3 rounded ${SEVERITY_BG[k].bg} ${SEVERITY_BG[k].bgDark}`}></span>
+              <span className="text-slate-600 dark:text-slate-400">🏥 {SEVERITY_BG[k].label}</span>
+            </div>
+          ))}
         </div>
 
         {/* Grid */}
-        <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl p-2 sm:p-4 border border-slate-200 dark:border-slate-700">
-          <div className="min-w-0">
-            {/* Column labels */}
-            <div className="flex gap-0.5 sm:gap-1.5 mb-0.5 sm:mb-2 pl-6 sm:pl-10">
-              {Array.from({ length: COLS }, (_, i) => (
-                <div
-                  key={i}
-                  className="w-8 h-5 sm:w-12 sm:h-6 flex items-center justify-center text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400"
-                >
-                  C{i + 1}
-                </div>
-              ))}
-            </div>
-
-            {/* Rows */}
-            {Array.from({ length: ROWS }, (_, rIdx) => {
-              const row = rIdx + 1;
-              return (
-                <div key={row} className="flex gap-0.5 sm:gap-1.5 mb-0.5 sm:mb-1.5 items-center">
-                  {/* Row label */}
-                  <div className="w-5 sm:w-9 h-8 sm:h-12 flex items-center justify-center text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">
-                    R{row}
-                  </div>
-                  {Array.from({ length: COLS }, (_, cIdx) => {
-                    const col = cIdx + 1;
-                    if (!hasTree(row, col)) {
-                      return (
-                        <div
-                          key={col}
-                          className="w-8 h-8 sm:w-12 sm:h-12 rounded-md sm:rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700"
-                        />
-                      );
-                    }
-                    const t = treeMap.get(`${row},${col}`);
-                    const status: Status = t?.status ?? 'normal';
-                    const meta = STATUS_META[status];
-                    const treeNumber = t?.treeNumber ?? defaultTreeNumber(row, col);
-                    const variety = t?.variety ?? '—';
-                    return (
-                      <button
-                        key={col}
-                        onClick={() => openEdit(row, col)}
-                        title={`${treeNumber} · ${variety} · ${meta.label}`}
-                        className={`group relative w-8 h-8 sm:w-12 sm:h-12 rounded-md sm:rounded-lg ${meta.bg} ${meta.bgDark} border border-slate-200 dark:border-slate-700 hover:scale-[1.3] hover:z-10 hover:shadow-lg transition-transform duration-150 flex flex-col items-center justify-center`}
-                      >
-                        <span className="text-sm sm:text-xl leading-none">{meta.icon}</span>
-                        <span className="text-[7px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-tight mt-0 sm:mt-0.5 hidden sm:block">
-                          {treeNumber}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-2 border border-slate-200 dark:border-slate-700">
+          {/* Column labels */}
+          <div
+            className="grid mb-0.5"
+            style={{ gridTemplateColumns: `20px repeat(${COLS}, 1fr)`, gap: '2px' }}
+          >
+            <div />
+            {Array.from({ length: COLS }, (_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400 h-5"
+              >
+                C{i + 1}
+              </div>
+            ))}
           </div>
+
+          {/* Rows */}
+          {Array.from({ length: ROWS }, (_, rIdx) => {
+            const row = rIdx + 1;
+            return (
+              <div
+                key={row}
+                className="grid mb-0.5"
+                style={{ gridTemplateColumns: `20px repeat(${COLS}, 1fr)`, gap: '2px' }}
+              >
+                {/* Row label */}
+                <div className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400">
+                  R{row}
+                </div>
+                {Array.from({ length: COLS }, (_, cIdx) => {
+                  const col = cIdx + 1;
+                  if (!hasTree(row, col)) {
+                    return (
+                      <div
+                        key={col}
+                        className="rounded-md bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700 aspect-square"
+                      />
+                    );
+                  }
+                  const t = treeMap.get(`${row},${col}`);
+                  const status: Status = (t?.status ?? 'normal') as Status;
+                  const meta = STATUS_META[status];                  const treeNumber = t?.treeNumber ?? defaultTreeNumber(row, col);
+                  const variety = t?.variety ?? '—';
+                  const shortCode = treeNumber.length > 5 ? treeNumber.slice(0, 5) : treeNumber;
+                  const hospSeverity = t ? hospitalMap.get(t.id) : undefined;
+                  const cellBg = hospSeverity
+                    ? `${SEVERITY_BG[hospSeverity].bg} ${SEVERITY_BG[hospSeverity].bgDark}`
+                    : `${meta.bg} ${meta.bgDark}`;
+                  return (
+                    <button
+                      key={col}
+                      onClick={() => openEdit(row, col)}
+                      title={`${treeNumber} · ${variety} · ${hospSeverity ? `🏥 ${SEVERITY_BG[hospSeverity].label}` : meta.label}`}
+                      className={`relative rounded-md ${cellBg} border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform flex flex-col items-center justify-center aspect-square w-full`}
+                    >
+                      <span className="text-[10px] sm:text-sm leading-none">{meta.icon}</span>
+                      <span className="text-[6px] sm:text-[8px] font-bold text-slate-700 dark:text-slate-200 leading-tight mt-0.5 w-full text-center px-0.5 truncate">
+                        {shortCode}
+                      </span>
+                      {hospSeverity && (
+                        <span className="absolute -top-0.5 -right-0.5 text-[8px] leading-none">🏥</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -434,21 +489,69 @@ export default function FarmMapClient() {
                 </div>
               )}
 
-              <div className="flex gap-2 pt-2">
+              <div className="space-y-2 pt-2">
+                {/* ปุ่มส่งห้องพยาบาล — แสดงทุกต้น */}
                 <button
-                  onClick={closeModal}
+                  onClick={async () => {
+                    const existingTree = editing ? treeMap.get(`${editing.row},${editing.col}`) : null;
+                    if (existingTree) {
+                      // ต้นมีข้อมูลแล้ว → navigate ตรง
+                      closeModal();
+                      router.push(`/orchard/hospital?id=${orchardId}&treeId=${existingTree.id}`);
+                    } else if (editing) {
+                      // ต้นยังไม่มีข้อมูล → ตรวจ dup แล้วสร้าง แล้ว navigate
+                      setSaving(true);
+                      try {
+                        const tn = form.treeNumber.trim() || defaultTreeNumber(editing.row, editing.col);
+                        // ตรวจรหัสซ้ำ
+                        const dup = trees.find(t => t.treeNumber === tn);
+                        if (dup) {
+                          alert(`รหัสต้น "${tn}" ซ้ำกับต้นที่ R${dup.row}C${dup.col}`);
+                          setSaving(false);
+                          return;
+                        }
+                        const newId = await addTreeProfile({
+                          orchardId,
+                          row: editing.row,
+                          col: editing.col,
+                          treeNumber: tn,
+                          status: 'watch',
+                          variety: form.variety,
+                          age: Number(form.age) || 0,
+                          note: form.note,
+                          createdAt: Date.now(),
+                          updatedAt: Date.now(),
+                        });
+                        closeModal();
+                        router.push(`/orchard/hospital?id=${orchardId}&treeId=${newId}`);
+                      } catch {
+                        alert('เกิดข้อผิดพลาด');
+                      } finally {
+                        setSaving(false);
+                      }
+                    }
+                  }}
                   disabled={saving}
-                  className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-all disabled:opacity-50"
+                  className="w-full py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-red-200 dark:border-red-800 disabled:opacity-50"
                 >
-                  ยกเลิก
+                  🏥 ส่งห้องพยาบาล
                 </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-all disabled:opacity-50"
-                >
-                  {saving ? 'กำลังบันทึก...' : 'บันทึก'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={closeModal}
+                    disabled={saving}
+                    className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-all disabled:opacity-50"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-all disabled:opacity-50"
+                  >
+                    {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
