@@ -1,24 +1,25 @@
-# Garden Master — Deploy Script
-# Build → Git commit+push → Firebase deploy
+# Garden Master - Deploy Script
+# Build -> Git commit+push -> Firebase deploy
 
 Set-Location $PSScriptRoot
 
-Write-Host "📦 Building..." -ForegroundColor Cyan
+Write-Host "[1/4] Building..." -ForegroundColor Cyan
 npm run build
-if ($LASTEXITCODE -ne 0) { Write-Host "❌ Build failed" -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "[FAIL] Build failed" -ForegroundColor Red; exit 1 }
 
-Write-Host "📝 Git commit..." -ForegroundColor Cyan
+Write-Host "[2/4] Git staging..." -ForegroundColor Cyan
 git add .
 $date = Get-Date -Format "yyyy-MM-dd HH:mm"
-git commit -m "deploy: $date"
-# ถ้าไม่มีอะไร commit ก็ไม่เป็นไร
+$msg = "deploy: $date"
+git commit -m $msg
+# exit code 1 = nothing to commit, that is OK
 
-Write-Host "⬆️  Git push..." -ForegroundColor Cyan
+Write-Host "[3/4] Git push..." -ForegroundColor Cyan
 git push origin main
-if ($LASTEXITCODE -ne 0) { Write-Host "❌ Push failed" -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "[FAIL] Push failed" -ForegroundColor Red; exit 1 }
 
-Write-Host "🔥 Deploying to Firebase..." -ForegroundColor Cyan
+Write-Host "[4/4] Firebase deploy..." -ForegroundColor Cyan
 npx firebase deploy --only hosting --project gardanmaster-2d5db
-if ($LASTEXITCODE -ne 0) { Write-Host "❌ Firebase deploy failed" -ForegroundColor Red; exit 1 }
+if ($LASTEXITCODE -ne 0) { Write-Host "[FAIL] Firebase deploy failed" -ForegroundColor Red; exit 1 }
 
-Write-Host "✅ Deploy สำเร็จ!" -ForegroundColor Green
+Write-Host "[OK] Deploy complete!" -ForegroundColor Green
