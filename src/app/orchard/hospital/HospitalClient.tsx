@@ -60,6 +60,7 @@ export default function HospitalClient() {
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
   const preselectedTreeId = searchParams.get('treeId') || '';
+  const viewTreeId = searchParams.get('viewTreeId') || '';
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [trees, setTrees] = useState<TreeProfile[]>([]);
@@ -92,13 +93,22 @@ export default function HospitalClient() {
       setTrees(treeData);
       setRecords(recordData);
 
-      // Auto-select ต้นถ้ามี treeId จาก query string
+      // Auto-select ต้นถ้ามี treeId จาก query string (เปิดฟอร์มบันทึกใหม่)
       if (preselectedTreeId && treeData.length > 0) {
         const preTree = treeData.find(t => t.id === preselectedTreeId);
         if (preTree) {
           setForm(prev => ({ ...prev, treeId: preTree.id, treeNumber: preTree.treeNumber }));
           setShowForm(true);
         }
+      }
+
+      // ถ้ามี viewTreeId — แสดงเฉพาะประวัติของต้นนั้น (filter)
+      if (viewTreeId) {
+        // scroll ไปที่ section ประวัติ + auto-expand บันทึกแรกของต้นนั้น
+        setTimeout(() => {
+          const el = document.getElementById(`tree-history-${viewTreeId}`);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 200);
       }
     } catch (e) {
       console.error(e);
@@ -154,6 +164,7 @@ export default function HospitalClient() {
     if (!form.treeId || !form.symptoms) return;
     setSaving(true);
     try {
+      const now = Date.now();
       const payload = {
         orchardId,
         treeId: form.treeId,
@@ -167,37 +178,87 @@ export default function HospitalClient() {
         recoveryDate: form.recoveryDate,
         status: form.status,
         note: form.note,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       };
+
+      // ── 1) บันทึก/แก้ไข Hospital Record ──
+      let savedRecordId: string;
+      let oldRecord: HospitalRecord | undefined;
       if (editingId) {
-        await updateHospitalRecord(editingId, payload);
+        oldRecord = records.find(r => r.id === editingId);
+        const editHistory = [
+          ...(oldRecord?.editHistory ?? []),
+          ...(oldRecord ? [{
+            editedAt: now,
+            symptoms: oldRecord.symptoms,
+            severity: oldRecord.severity,
+            medicines: oldRecord.medicines,
+            treatmentResult: oldRecord.treatmentResult,
+            status: oldRecord.status,
+            recoveryDate: oldRecord.recoveryDate,
+            note: oldRecord.note,
+          }] : []),
+        ];
+        await updateHospitalRecord(editingId, { ...payload, editHistory });
+        savedRecordId = editingId;
       } else {
-        await addHospitalRecord(payload);
+        savedRecordId = await addHospitalRecord(payload);
       }
 
-      // Auto-update TreeProfile status
-      if (form.treeId) {
-        if (payload.status === 'treating') {
-          // กำลังรักษา → เปลี่ยนเป็นเฝ้าระวัง
-          await updateTreeProfile(form.treeId, { status: 'watch', updatedAt: Date.now() });
-        } else if (payload.status === 'recovered') {
-          // หายแล้ว → ดึงข้อมูลล่าสุดจาก Firestore server แล้วตรวจว่ายังมีบันทึกอื่นที่กำลังรักษาอยู่ไหม
-          const freshRecords = await getHospitalRecords(orchardId);
-          const stillTreating = freshRecords.some(
-            r => r.treeId === form.treeId && r.status === 'treating'
-          );
-          if (!stillTreating) {
-            await updateTreeProfile(form.treeId, { status: 'normal', updatedAt: Date.now() });
-          }
-        }
-      }
+      // ── 2) คำนวณ "ประวัติล่าสุด" ของต้นนี้ จาก local records ──
+      // (ไม่ refetch จาก server เพื่อหลีกเลี่ยง eventual consistency)
+      // สร้าง list บันทึกหลังการแก้ไข
+      const newRecord: HospitalRecord = {
+        id: savedRecordId,
+        ...payload,
+      } as HospitalRecord;
+
+      const treeRecordsAfterSave: HospitalRecord[] = editingId
+        ? records.map(r => r.id === savedRecordId ? newRecord : r)
+        : [...records, newRecord];
+
+      const treeOnly = treeRecordsAfterSave.filter(r => r.treeId === form.treeId);
+      const latest = treeOnly.reduce<HospitalRecord | null>(
+        (acc, r) => (!acc || r.createdAt >= acc.createdAt) ? r : acc,
+        null
+      );
+
+      // ── 3) Sync TreeProfile.status ตามประวัติล่าสุด ──
+      const expectedTreeStatus: 'normal' | 'watch' = latest && latest.status === 'treating'
+        ? 'watch'
+        : 'normal';
+
+      // eslint-disable-next-line no-console
+      console.log('[Hospital] Sync tree from latest record', {
+        treeId: form.treeId,
+        savedRecordId,
+        latestId: latest?.id,
+        latestStatus: latest?.status,
+        latestCreatedAt: latest?.createdAt,
+        expectedTreeStatus,
+      });
+
+      await updateTreeProfile(form.treeId, {
+        status: expectedTreeStatus,
+        updatedAt: now,
+      });
+
+      // ── 4) Reset form + reload ──
       setForm({ ...EMPTY_FORM, dateFound: new Date().toISOString().split('T')[0] });
       setShowForm(false);
       setEditingId(null);
       await loadData();
-    } catch {
-      alert('บันทึกไม่สำเร็จ!');
+
+      // ── 5) แสดงข้อความยืนยัน ──
+      alert(
+        expectedTreeStatus === 'normal'
+          ? `บันทึกสำเร็จ\nต้น ${form.treeNumber} → สถานะปกติ 🌳`
+          : `บันทึกสำเร็จ\nต้น ${form.treeNumber} → เฝ้าระวัง 🌲`
+      );
+    } catch (e) {
+      console.error('[Hospital] save failed', e);
+      alert('บันทึกไม่สำเร็จ! โปรดลองใหม่');
     } finally {
       setSaving(false);
     }
@@ -224,7 +285,29 @@ export default function HospitalClient() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('ลบบันทึกนี้?')) return;
+    const target = records.find(r => r.id === id);
     await deleteHospitalRecord(id);
+
+    // หลังลบ → คำนวณประวัติล่าสุดของต้นใหม่ → sync TreeProfile
+    if (target) {
+      const remaining = records.filter(r => r.id !== id && r.treeId === target.treeId);
+      const latest = remaining.reduce<HospitalRecord | null>(
+        (acc, r) => (!acc || r.createdAt >= acc.createdAt) ? r : acc,
+        null
+      );
+      const expectedStatus: 'normal' | 'watch' = latest && latest.status === 'treating'
+        ? 'watch'
+        : 'normal';
+      try {
+        await updateTreeProfile(target.treeId, {
+          status: expectedStatus,
+          updatedAt: Date.now(),
+        });
+      } catch (e) {
+        console.error('[Hospital] sync after delete failed', e);
+      }
+    }
+
     await loadData();
   };
 
@@ -238,9 +321,19 @@ export default function HospitalClient() {
 
   const isDurianBackyard = orchard.name === 'ทุเรียนหลังบ้าน';
 
+  // ถ้ามี viewTreeId → filter เฉพาะต้นนั้น
+  const filteredRecords = viewTreeId
+    ? records.filter(r => r.treeId === viewTreeId)
+    : records;
+
+  // ชื่อต้นที่กำลัง filter
+  const viewedTreeName = viewTreeId
+    ? trees.find(t => t.id === viewTreeId)?.treeNumber || ''
+    : '';
+
   // Group records by tree
   const byTree: Record<string, HospitalRecord[]> = {};
-  for (const r of records) {
+  for (const r of filteredRecords) {
     if (!byTree[r.treeNumber]) byTree[r.treeNumber] = [];
     byTree[r.treeNumber].push(r);
   }
@@ -257,13 +350,51 @@ export default function HospitalClient() {
       />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
+
+        {/* Banner: กำลังดูประวัติเฉพาะต้น */}
+        {viewTreeId && viewedTreeName && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span>📋</span>
+              <div>
+                <p className="text-sm font-bold text-blue-800 dark:text-blue-300">
+                  ประวัติของต้น {viewedTreeName}
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  {filteredRecords.length} รายการ
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push(`/orchard/hospital?id=${orchardId}`)}
+              className="text-xs font-bold text-blue-700 dark:text-blue-400 hover:underline"
+            >
+              ดูทั้งหมด →
+            </button>
+          </div>
+        )}
+
         {/* ปุ่มเพิ่ม */}
         {!showForm && (
           <button
-            onClick={() => { setForm({ ...EMPTY_FORM, dateFound: new Date().toISOString().split('T')[0] }); setEditingId(null); setShowForm(true); }}
+            onClick={() => {
+              // ถ้าอยู่ใน view mode → preselect ต้นนั้นใน form
+              const preTree = viewTreeId ? trees.find(t => t.id === viewTreeId) : null;
+              setForm({
+                ...EMPTY_FORM,
+                dateFound: new Date().toISOString().split('T')[0],
+                treeId: preTree?.id ?? '',
+                treeNumber: preTree?.treeNumber ?? '',
+              });
+              setEditingId(null);
+              setShowForm(true);
+            }}
             className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all"
           >
             <Plus size={18} /> บันทึกอาการใหม่
+            {viewTreeId && viewedTreeName && (
+              <span className="text-xs font-normal opacity-90">— {viewedTreeName}</span>
+            )}
           </button>
         )}
 

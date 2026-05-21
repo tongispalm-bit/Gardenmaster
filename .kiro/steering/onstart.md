@@ -9,7 +9,8 @@ inclusion: always
 1. **ตอบเป็นภาษาไทยเสมอ** ทุก response
 2. **อ่าน context** จาก steering files ทั้งหมดก่อนทำงาน
 
-> Dev server จะเปิดอัตโนมัติผ่าน Hook (promptSubmit → `npm run dev`)
+> Dev server ให้ผู้ใช้รันเองใน terminal แยก: `npm run dev`
+> (ปิด auto-start hook แล้ว เพราะทำให้ command timeout)
 
 ---
 

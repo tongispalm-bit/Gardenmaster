@@ -99,11 +99,52 @@ export default function FarmMapClient() {
       setOrchard(found || null);
 
       const data = await getTreeProfiles(orchardId);
-      setTrees(data);
-
       const hospData = await getHospitalRecords(orchardId);
-      // เก็บเฉพาะที่ยังกำลังรักษา
-      setHospitalRecords(hospData.filter(r => r.status === 'treating'));
+
+      // ── Auto-sync: ใช้ "ประวัติการป่วยล่าสุด" เป็นแหล่งความจริง ──
+      // ดึงประวัติล่าสุดของแต่ละต้น
+      const latestByTree = new Map<string, HospitalRecord>();
+      for (const r of hospData) {
+        const existing = latestByTree.get(r.treeId);
+        if (!existing || r.createdAt > existing.createdAt) {
+          latestByTree.set(r.treeId, r);
+        }
+      }
+
+      // หาต้นที่ DB กับ "ประวัติล่าสุด" ไม่ตรงกัน → sync
+      const desync: { id: string; from: string; to: 'normal' | 'watch'; treeNumber: string }[] = [];
+      for (const t of data) {
+        if (t.status === 'seedling') continue; // ต้นกล้า ไม่แตะ
+        const latest = latestByTree.get(t.id);
+        if (!latest) {
+          // ไม่มีประวัติเลย → status ควรเป็น normal
+          if (t.status !== 'normal') {
+            desync.push({ id: t.id, from: t.status, to: 'normal', treeNumber: t.treeNumber });
+          }
+        } else {
+          const expected: 'normal' | 'watch' = latest.status === 'treating' ? 'watch' : 'normal';
+          if (t.status !== expected) {
+            desync.push({ id: t.id, from: t.status, to: expected, treeNumber: t.treeNumber });
+          }
+        }
+      }
+
+      if (desync.length > 0) {
+        // eslint-disable-next-line no-console
+        console.log('[FarmMap] Auto-sync from latest hospital record:', desync);
+        await Promise.all(
+          desync.map(d => updateTreeProfile(d.id, { status: d.to, updatedAt: Date.now() }))
+        );
+        const synced = data.map(t => {
+          const fix = desync.find(d => d.id === t.id);
+          return fix ? { ...t, status: fix.to } : t;
+        });
+        setTrees(synced);
+      } else {
+        setTrees(data);
+      }
+
+      setHospitalRecords(hospData);
     } catch (error) {
       console.error('Error loading farm map:', error);
     } finally {
@@ -118,18 +159,40 @@ export default function FarmMapClient() {
     return m;
   }, [trees]);
 
-  // Hospital map: treeId → severity ที่รุนแรงที่สุด
-  const hospitalMap = useMemo(() => {
-    const severityOrder: Record<Severity, number> = { mild: 1, moderate: 2, severe: 3 };
-    const m = new Map<string, Severity>();
+  // ประวัติการป่วย "ล่าสุด" ของแต่ละต้น (createdAt มากสุด)
+  // เป็น single source of truth สำหรับสถานะสุขภาพและสีในผังสวน
+  const latestRecordByTree = useMemo(() => {
+    const m = new Map<string, HospitalRecord>();
     for (const r of hospitalRecords) {
       const existing = m.get(r.treeId);
-      if (!existing || severityOrder[r.severity] > severityOrder[existing]) {
-        m.set(r.treeId, r.severity);
+      if (!existing || r.createdAt > existing.createdAt) {
+        m.set(r.treeId, r);
       }
     }
     return m;
   }, [hospitalRecords]);
+
+  // Hospital map: treeId → severity จาก "ประวัติล่าสุด" เท่านั้น
+  // ถ้าประวัติล่าสุด = recovered → ไม่มี override → กลับสีปกติ
+  const hospitalMap = useMemo(() => {
+    const m = new Map<string, Severity>();
+    for (const [treeId, latest] of latestRecordByTree) {
+      if (latest.status === 'treating') {
+        m.set(treeId, latest.severity);
+      }
+    }
+    return m;
+  }, [latestRecordByTree]);
+
+  // Set ของ treeId ที่ "ยังป่วยอยู่" — ใช้กับปุ่มในฟอร์ม
+  // ตรงกับ "ประวัติล่าสุด.status === treating"
+  const treeIdsActivelySick = useMemo(() => {
+    const s = new Set<string>();
+    for (const [treeId, latest] of latestRecordByTree) {
+      if (latest.status === 'treating') s.add(treeId);
+    }
+    return s;
+  }, [latestRecordByTree]);
 
   // Summary
   const summary = useMemo(() => {
@@ -143,24 +206,55 @@ export default function FarmMapClient() {
         if (!hasTree(r, c)) continue;
         total++;
         const t = treeMap.get(`${r},${c}`);
-        const status = t?.status ?? 'normal';
-        if (status === 'seedling') seedling++;
-        else if (status === 'watch') watch++;
+        const dbStatus: Status = (t?.status ?? 'normal') as Status;
+        // ใช้ effective status (จากประวัติล่าสุด) ยกเว้น seedling
+        let effStatus: Status = dbStatus;
+        if (t && dbStatus !== 'seedling') {
+          const latest = latestRecordByTree.get(t.id);
+          effStatus = latest && latest.status === 'treating' ? 'watch' : 'normal';
+        }
+        if (effStatus === 'seedling') seedling++;
+        else if (effStatus === 'watch') watch++;
         else normal++;
         if (t && hospitalMap.has(t.id)) hospital++;
       }
     }
     return { total, normal, watch, seedling, hospital };
-  }, [treeMap, hospitalMap]);
+  }, [treeMap, hospitalMap, latestRecordByTree]);
 
-  const openEdit = (row: number, col: number) => {
+  const openEdit = async (row: number, col: number) => {
     const existing = treeMap.get(`${row},${col}`);
     setEditing({ row, col });
     setFormError(null);
     if (existing) {
+      // ── ใช้ประวัติการป่วยล่าสุดเป็นตัวกำหนดสถานะสุขภาพอัตโนมัติ ──
+      // - ประวัติล่าสุด = treating → watch (เฝ้าระวัง)
+      // - ประวัติล่าสุด = recovered → normal (ปกติ)
+      // - ไม่มีประวัติ → normal (ปกติ)
+      // ยกเว้น seedling (ต้นกล้า) — เก็บค่าตาม DB
+      const latest = latestRecordByTree.get(existing.id);
+      let effectiveStatus: Status;
+      if (existing.status === 'seedling') {
+        effectiveStatus = 'seedling';
+      } else if (latest) {
+        effectiveStatus = latest.status === 'treating' ? 'watch' : 'normal';
+      } else {
+        effectiveStatus = 'normal';
+      }
+
+      // Sync DB ถ้าไม่ตรงกับสถานะที่ควรเป็น
+      if (existing.status !== effectiveStatus && existing.status !== 'seedling') {
+        try {
+          await updateTreeProfile(existing.id, { status: effectiveStatus, updatedAt: Date.now() });
+          setTrees(prev => prev.map(t => t.id === existing.id ? { ...t, status: effectiveStatus } : t));
+        } catch (e) {
+          console.error('auto-sync failed', e);
+        }
+      }
+
       setForm({
         treeNumber: existing.treeNumber,
-        status: existing.status as Status,
+        status: effectiveStatus,
         variety: existing.variety || 'หมอนทอง',
         age: existing.age || 0,
         note: existing.note || '',
@@ -348,8 +442,21 @@ export default function FarmMapClient() {
                     );
                   }
                   const t = treeMap.get(`${row},${col}`);
-                  const status: Status = (t?.status ?? 'normal') as Status;
-                  const meta = STATUS_META[status];                  const treeNumber = t?.treeNumber ?? defaultTreeNumber(row, col);
+                  // ── คำนวณสถานะที่ "ควรจะเป็น" จากประวัติการป่วยล่าสุด ──
+                  // ตรงกับ logic ใน openEdit: ประวัติล่าสุด = treating → watch / recovered → normal
+                  // ยกเว้น seedling (ต้นกล้า) — เก็บค่าเดิม
+                  const dbStatus: Status = (t?.status ?? 'normal') as Status;
+                  let effStatus: Status = dbStatus;
+                  if (t && dbStatus !== 'seedling') {
+                    const latest = latestRecordByTree.get(t.id);
+                    if (latest) {
+                      effStatus = latest.status === 'treating' ? 'watch' : 'normal';
+                    } else {
+                      effStatus = 'normal';
+                    }
+                  }
+                  const meta = STATUS_META[effStatus];
+                  const treeNumber = t?.treeNumber ?? defaultTreeNumber(row, col);
                   const variety = t?.variety ?? '—';
                   const shortCode = treeNumber.length > 5 ? treeNumber.slice(0, 5) : treeNumber;
                   const hospSeverity = t ? hospitalMap.get(t.id) : undefined;
@@ -391,7 +498,7 @@ export default function FarmMapClient() {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-800 dark:text-white">
-                แก้ไขข้อมูลต้น R{editing.row}C{editing.col}
+                ข้อมูลต้น R{editing.row}C{editing.col}
               </h2>
               <button
                 onClick={closeModal}
@@ -490,52 +597,65 @@ export default function FarmMapClient() {
               )}
 
               <div className="space-y-2 pt-2">
-                {/* ปุ่มส่งห้องพยาบาล — แสดงทุกต้น */}
-                <button
-                  onClick={async () => {
-                    const existingTree = editing ? treeMap.get(`${editing.row},${editing.col}`) : null;
-                    if (existingTree) {
-                      // ต้นมีข้อมูลแล้ว → navigate ตรง
-                      closeModal();
-                      router.push(`/orchard/hospital?id=${orchardId}&treeId=${existingTree.id}`);
-                    } else if (editing) {
-                      // ต้นยังไม่มีข้อมูล → ตรวจ dup แล้วสร้าง แล้ว navigate
-                      setSaving(true);
-                      try {
-                        const tn = form.treeNumber.trim() || defaultTreeNumber(editing.row, editing.col);
-                        // ตรวจรหัสซ้ำ
-                        const dup = trees.find(t => t.treeNumber === tn);
-                        if (dup) {
-                          alert(`รหัสต้น "${tn}" ซ้ำกับต้นที่ R${dup.row}C${dup.col}`);
-                          setSaving(false);
-                          return;
+                {/* ปุ่มห้องพยาบาล — เปลี่ยนตามว่ามีบันทึก treating ค้างอยู่ไหม */}
+                {(() => {
+                  const existingTree = editing ? treeMap.get(`${editing.row},${editing.col}`) : null;
+                  const isActivelySick = existingTree ? treeIdsActivelySick.has(existingTree.id) : false;
+                  return (
+                    <button
+                      onClick={async () => {
+                        if (existingTree) {
+                          closeModal();
+                          if (isActivelySick) {
+                            // กำลังรักษาอยู่ → ไปหน้าประวัติของต้นนั้น (filter + preselect)
+                            router.push(`/orchard/hospital?id=${orchardId}&viewTreeId=${existingTree.id}&treeId=${existingTree.id}`);
+                          } else {
+                            // หายแล้ว/ยังไม่เคยป่วย → เปิดฟอร์มบันทึกใหม่
+                            router.push(`/orchard/hospital?id=${orchardId}&treeId=${existingTree.id}`);
+                          }
+                        } else if (editing) {
+                          // ต้นยังไม่มีข้อมูล → ตรวจ dup แล้วสร้าง แล้ว navigate
+                          setSaving(true);
+                          try {
+                            const tn = form.treeNumber.trim() || defaultTreeNumber(editing.row, editing.col);
+                            const dup = trees.find(t => t.treeNumber === tn);
+                            if (dup) {
+                              alert(`รหัสต้น "${tn}" ซ้ำกับต้นที่ R${dup.row}C${dup.col}`);
+                              setSaving(false);
+                              return;
+                            }
+                            const newId = await addTreeProfile({
+                              orchardId,
+                              row: editing.row,
+                              col: editing.col,
+                              treeNumber: tn,
+                              status: 'watch',
+                              variety: form.variety,
+                              age: Number(form.age) || 0,
+                              note: form.note,
+                              createdAt: Date.now(),
+                              updatedAt: Date.now(),
+                            });
+                            closeModal();
+                            router.push(`/orchard/hospital?id=${orchardId}&treeId=${newId}`);
+                          } catch {
+                            alert('เกิดข้อผิดพลาด');
+                          } finally {
+                            setSaving(false);
+                          }
                         }
-                        const newId = await addTreeProfile({
-                          orchardId,
-                          row: editing.row,
-                          col: editing.col,
-                          treeNumber: tn,
-                          status: 'watch',
-                          variety: form.variety,
-                          age: Number(form.age) || 0,
-                          note: form.note,
-                          createdAt: Date.now(),
-                          updatedAt: Date.now(),
-                        });
-                        closeModal();
-                        router.push(`/orchard/hospital?id=${orchardId}&treeId=${newId}`);
-                      } catch {
-                        alert('เกิดข้อผิดพลาด');
-                      } finally {
-                        setSaving(false);
-                      }
-                    }
-                  }}
-                  disabled={saving}
-                  className="w-full py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-red-200 dark:border-red-800 disabled:opacity-50"
-                >
-                  🏥 ส่งห้องพยาบาล
-                </button>
+                      }}
+                      disabled={saving}
+                      className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border disabled:opacity-50 ${
+                        isActivelySick
+                          ? 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                          : 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
+                      }`}
+                    >
+                      {isActivelySick ? '📋 ประวัติการป่วย' : '🏥 ส่งห้องพยาบาล'}
+                    </button>
+                  );
+                })()}
                 <div className="flex gap-2">
                   <button
                     onClick={closeModal}

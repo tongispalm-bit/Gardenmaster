@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Stethoscope,
   Map as MapIcon,
+  FlaskConical,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -28,6 +29,7 @@ const TABS: TabItem[] = [
   { id: 'upgrade',  path: '/orchard/upgrade',  label: 'ปรับปรุง',    Icon: Wrench,       activeColor: 'text-orange-600 dark:text-orange-400', activeBg: 'bg-orange-50 dark:bg-orange-900/30', activeBorder: 'border-orange-400 dark:border-orange-600' },
   { id: 'sales',    path: '/orchard/sales',    label: 'ซื้อขาย',     Icon: ShoppingCart, activeColor: 'text-pink-600 dark:text-pink-400',     activeBg: 'bg-pink-50 dark:bg-pink-900/30',     activeBorder: 'border-pink-400 dark:border-pink-600' },
   { id: 'hospital', path: '/orchard/hospital', label: 'พยาบาล',     Icon: Stethoscope,  activeColor: 'text-red-600 dark:text-red-400',       activeBg: 'bg-red-50 dark:bg-red-900/30',       activeBorder: 'border-red-400 dark:border-red-600' },
+  { id: 'chemical-stock', path: '/orchard/chemical-stock', label: 'คลังสารเคมี', Icon: FlaskConical, activeColor: 'text-purple-600 dark:text-purple-400', activeBg: 'bg-purple-50 dark:bg-purple-900/30', activeBorder: 'border-purple-400 dark:border-purple-600' },
 ];
 
 type Props = {

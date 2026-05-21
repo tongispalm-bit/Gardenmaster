@@ -1,22 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  getOrchards, getFertilizerFormulas, addFertilizerFormula,
-  updateFertilizerFormula, deleteFertilizerFormula,
+  getOrchards,
   addFertilizerRecord, getFertilizerRecords, deleteFertilizerRecord,
-  GROWTH_STAGE_LABEL,
-  type Orchard, type FertilizerFormula, type FertilizerRecord, type GrowthStage,
+  getNutrientItems, deductFromStock,
+  GROWTH_STAGE_LABEL, MEDICINE_UNIT_LABEL,
+  type Orchard, type FertilizerRecord, type GrowthStage,
+  type NutrientItemRecord, type MedicineUnit,
 } from '@/lib/firebase';
-import { Leaf, Plus, Trash2, Pencil, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Leaf, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import SubPageHeader from '../../_components/SubPageHeader';
 
-const DEFAULT_FORMULAS = [
-  { name: 'สูตรบำรุงใบ', npk: '30-10-10', stage: 'leaf' as GrowthStage },
-  { name: 'สูตรออกดอก', npk: '10-30-20', stage: 'flower' as GrowthStage },
-  { name: 'สูตรติดผล', npk: '10-10-30', stage: 'fruit' as GrowthStage },
-  { name: 'สูตรฟื้นฟู', npk: '15-15-15', stage: 'recovery' as GrowthStage },
+const GROWTH_STAGES: GrowthStage[] = [
+  'recovery', 'leaf', 'flower', 'tail',
+  'small_fruit', 'milk_can', 'expand_lobe', 'harvest',
 ];
 
 export default function FertilizeClient() {
@@ -25,21 +24,23 @@ export default function FertilizeClient() {
   const orchardId = searchParams.get('id') || '';
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [formulas, setFormulas] = useState<FertilizerFormula[]>([]);
   const [records, setRecords] = useState<FertilizerRecord[]>([]);
+  const [stocks, setStocks] = useState<NutrientItemRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showFormulas, setShowFormulas] = useState(false);
-  const [editingFormula, setEditingFormula] = useState<FertilizerFormula | null>(null);
-  const [showAddFormula, setShowAddFormula] = useState(false);
 
-  const [formulaForm, setFormulaForm] = useState({ name: '', npk: '', stage: 'leaf' as GrowthStage });
-  const [form, setForm] = useState({
+  // ปฏิทินประวัติ
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const emptyForm = {
     date: new Date().toISOString().split('T')[0],
-    formulaId: '',
-    amount: 0,
-    unit: 'กิโลกรัม',
-  });
+    stage: 'leaf' as GrowthStage,
+    stockId: '',
+    amount: '',
+    note: '',
+  };
+  const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
     if (!orchardId) { router.push('/'); return; }
@@ -48,61 +49,99 @@ export default function FertilizeClient() {
 
   const loadData = async () => {
     try {
-      const [orchards, f, r] = await Promise.all([
-        getOrchards(), getFertilizerFormulas(orchardId), getFertilizerRecords(orchardId),
+      const [orchards, r, fertItems] = await Promise.all([
+        getOrchards(),
+        getFertilizerRecords(orchardId),
+        getNutrientItems(orchardId, 'fertilizer'),  // เฉพาะปุ๋ยในคลัง
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
-      setFormulas(f);
       setRecords(r);
+      setStocks(fertItems);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
-  const handleSeedFormulas = async () => {
-    setSaving(true);
-    try {
-      for (const f of DEFAULT_FORMULAS) {
-        await addFertilizerFormula({ orchardId, ...f, createdAt: Date.now() });
-      }
-      await loadData();
-    } catch { alert('เพิ่มสูตรไม่สำเร็จ'); }
-    finally { setSaving(false); }
-  };
+  // ── ปฏิทิน ──
+  const recordsByDate = useMemo(() => {
+    const m = new Map<string, FertilizerRecord[]>();
+    for (const r of records) {
+      if (!r.date) continue;
+      if (!m.has(r.date)) m.set(r.date, []);
+      m.get(r.date)!.push(r);
+    }
+    return m;
+  }, [records]);
 
-  const handleSaveFormula = async () => {
-    if (!formulaForm.name || !formulaForm.npk) return;
-    setSaving(true);
-    try {
-      if (editingFormula) {
-        await updateFertilizerFormula(editingFormula.id, formulaForm);
-      } else {
-        await addFertilizerFormula({ orchardId, ...formulaForm, createdAt: Date.now() });
-      }
-      setFormulaForm({ name: '', npk: '', stage: 'leaf' });
-      setEditingFormula(null);
-      setShowAddFormula(false);
-      await loadData();
-    } catch { alert('บันทึกไม่สำเร็จ'); }
-    finally { setSaving(false); }
-  };
+  const calendarGrid = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startWeekday = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < startWeekday; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    return cells;
+  }, [calendarMonth]);
 
-  const selectedFormula = formulas.find(f => f.id === form.formulaId);
+  const THAI_MONTHS_FULL = [
+    'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+    'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม',
+  ];
+
+  const monthCount = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    let count = 0;
+    for (const r of records) {
+      if (!r.date) continue;
+      const [y, m] = r.date.split('-').map(Number);
+      if (y === year && m - 1 === month) count++;
+    }
+    return count;
+  }, [records, calendarMonth]);
+
+  const goPrevMonth = () => { setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)); setSelectedDate(null); };
+  const goNextMonth = () => { setCalendarMonth(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)); setSelectedDate(null); };
+
+  const selectedStock = stocks.find(s => s.id === form.stockId);
 
   const handleAdd = async () => {
-    if (!form.formulaId || !form.amount || !selectedFormula) return;
+    if (!form.stockId || !form.amount || !selectedStock) return;
+    const used = Number(form.amount);
+    if (!used || used <= 0) return;
+
     setSaving(true);
     try {
+      // 1) บันทึก fertilizer record
       await addFertilizerRecord({
-        orchardId, date: form.date,
-        formulaId: form.formulaId,
-        formulaName: selectedFormula.name,
-        npk: selectedFormula.npk,
-        stage: selectedFormula.stage,
-        amount: form.amount,
-        unit: form.unit,
+        orchardId,
+        date: form.date,
+        stockId: selectedStock.id,
+        formulaName: selectedStock.name,
+        npk: selectedStock.formula || '-',
+        stage: form.stage,
+        amount: used,
+        unit: selectedStock.unit,
+        note: form.note,
         createdAt: Date.now(),
       });
-      setForm({ date: new Date().toISOString().split('T')[0], formulaId: '', amount: 0, unit: 'กิโลกรัม' });
+
+      // 2) หักจากคลัง — ใช้กลุ่ม 'fertilizer' (nutrientItems collection)
+      const deductResults = await deductFromStock([{
+        group: 'fertilizer',
+        stockId: selectedStock.id,
+        amount: String(used),
+        unit: selectedStock.unit,
+      }]);
+      const failed = deductResults.filter(r => !r.ok);
+      if (failed.length > 0) {
+        // eslint-disable-next-line no-console
+        console.warn('[Fertilize] Stock deduction failed:', failed);
+      }
+
+      setForm(emptyForm);
       await loadData();
     } catch { alert('บันทึกไม่สำเร็จ'); }
     finally { setSaving(false); }
@@ -116,141 +155,310 @@ export default function FertilizeClient() {
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
 
-        {/* ── จัดการสูตรปุ๋ย ── */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <button onClick={() => setShowFormulas(!showFormulas)}
-            className="w-full flex items-center justify-between px-4 py-3">
-            <span className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-2">
-              🌿 สูตรปุ๋ย <span className="text-xs text-slate-500 dark:text-slate-400">({formulas.length} สูตร)</span>
-            </span>
-            {showFormulas ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-          </button>
-
-          {showFormulas && (
-            <div className="border-t border-slate-100 dark:border-slate-700">
-              {formulas.length === 0 ? (
-                <div className="p-4 text-center space-y-2">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">ยังไม่มีสูตรปุ๋ย</p>
-                  <button onClick={handleSeedFormulas} disabled={saving}
-                    className="text-xs text-emerald-600 font-bold border border-emerald-300 px-3 py-1.5 rounded-lg">
-                    + เพิ่มสูตรตัวอย่าง 4 สูตร
-                  </button>
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {formulas.map(f => (
-                    <div key={f.id} className="flex items-center justify-between px-4 py-2.5">
-                      <div>
-                        <p className="text-sm font-bold text-slate-800 dark:text-white">{f.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{f.npk} · {GROWTH_STAGE_LABEL[f.stage]}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => { setFormulaForm({ name: f.name, npk: f.npk, stage: f.stage }); setEditingFormula(f); setShowAddFormula(true); }}
-                          className="text-slate-400 hover:text-emerald-500"><Pencil size={14} /></button>
-                        <button onClick={() => { if (confirm('ลบสูตรนี้?')) deleteFertilizerFormula(f.id).then(loadData); }}
-                          className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add/Edit formula form */}
-              {showAddFormula ? (
-                <div className="p-4 border-t border-slate-100 dark:border-slate-700 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{editingFormula ? 'แก้ไขสูตร' : 'เพิ่มสูตรใหม่'}</span>
-                    <button onClick={() => { setShowAddFormula(false); setEditingFormula(null); setFormulaForm({ name: '', npk: '', stage: 'leaf' }); }}><X size={16} className="text-slate-400" /></button>
-                  </div>
-                  <input type="text" value={formulaForm.name} onChange={e => setFormulaForm({ ...formulaForm, name: e.target.value })}
-                    placeholder="ชื่อสูตร" className="w-full p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white" />
-                  <input type="text" value={formulaForm.npk} onChange={e => setFormulaForm({ ...formulaForm, npk: e.target.value })}
-                    placeholder="N-P-K เช่น 30-10-10" className="w-full p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white" />
-                  <select value={formulaForm.stage} onChange={e => setFormulaForm({ ...formulaForm, stage: e.target.value as GrowthStage })}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white">
-                    {Object.entries(GROWTH_STAGE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                  <button onClick={handleSaveFormula} disabled={saving}
-                    className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm">
-                    {editingFormula ? 'บันทึกการแก้ไข' : 'เพิ่มสูตร'}
-                  </button>
-                </div>
-              ) : (
-                <div className="p-3 border-t border-slate-100 dark:border-slate-700">
-                  <button onClick={() => setShowAddFormula(true)}
-                    className="w-full py-2 border border-dashed border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
-                    <Plus size={12} /> เพิ่มสูตรใหม่
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── บันทึกการใส่ปุ๋ย ── */}
+        {/* ── ฟอร์มบันทึกการใส่ปุ๋ย ── */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
           <h2 className="font-bold text-sm text-emerald-700 dark:text-emerald-400">บันทึกการใส่ปุ๋ย</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่</label>
-              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">สูตรปุ๋ย</label>
-              <select value={form.formulaId} onChange={e => setForm({ ...form, formulaId: e.target.value })}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white">
-                <option value="">-- เลือกสูตร --</option>
-                {formulas.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-            </div>
+
+          {/* 1. วันที่ */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+              1. วันที่ <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={form.date}
+              onChange={e => setForm({ ...form, date: e.target.value })}
+              className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white"
+            />
           </div>
-          {selectedFormula && (
-            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2.5 rounded-xl text-xs text-emerald-700 dark:text-emerald-400">
-              N-P-K: {selectedFormula.npk} · {GROWTH_STAGE_LABEL[selectedFormula.stage]}
+
+          {/* 2. ช่วงการเจริญเติบโต */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+              2. ช่วงการเจริญเติบโต <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.stage}
+              onChange={e => setForm({ ...form, stage: e.target.value as GrowthStage })}
+              className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white"
+            >
+              {GROWTH_STAGES.map(s => (
+                <option key={s} value={s}>{GROWTH_STAGE_LABEL[s]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 3. สูตรปุ๋ย — ลิงก์จากคลังสารเคมี */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+              3. สูตรปุ๋ย <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.stockId}
+              onChange={e => setForm({ ...form, stockId: e.target.value })}
+              className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white"
+            >
+              <option value="">-- เลือกสูตรปุ๋ย --</option>
+              {stocks.length === 0 ? (
+                <option disabled>(ไม่มีในคลัง — เพิ่มก่อนใน คลังสารเคมี → ปุ๋ย)</option>
+              ) : (
+                stocks.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}{s.formula ? ` (${s.formula})` : ''} · เหลือ {s.amount} {MEDICINE_UNIT_LABEL[s.unit] ?? s.unit}
+                  </option>
+                ))
+              )}
+            </select>
+            {stocks.length === 0 && (
+              <button
+                type="button"
+                onClick={() => router.push(`/orchard/chemical-stock/nutrient/fertilizer?id=${orchardId}`)}
+                className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-bold underline"
+              >
+                → ไปที่คลังสารเคมี (ปุ๋ย) เพื่อเพิ่มสูตร
+              </button>
+            )}
+          </div>
+
+          {/* รายละเอียดสูตรที่เลือก */}
+          {selectedStock && (
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 rounded-xl text-xs text-emerald-700 dark:text-emerald-400 space-y-1">
+              <div className="flex justify-between">
+                <span className="font-bold">{selectedStock.name}</span>
+                {selectedStock.formula && <span>N-P-K: {selectedStock.formula}</span>}
+              </div>
+              <div className="text-emerald-600/80 dark:text-emerald-400/70">
+                คงเหลือในคลัง: {selectedStock.amount} {MEDICINE_UNIT_LABEL[selectedStock.unit] ?? selectedStock.unit}
+              </div>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ปริมาณ</label>
-              <input type="number" min={0} value={form.amount || ''} onChange={e => setForm({ ...form, amount: Number(e.target.value) })}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white" placeholder="0" />
+
+          {/* 4. ปริมาณ */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
+              4. ปริมาณที่ใช้ <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={form.amount}
+                onChange={e => setForm({ ...form, amount: e.target.value })}
+                placeholder="0"
+                className="flex-1 p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white"
+              />
+              <div className="px-4 py-3 bg-slate-100 dark:bg-slate-900 rounded-xl text-sm text-slate-600 dark:text-slate-400 min-w-[80px] text-center">
+                {selectedStock ? (MEDICINE_UNIT_LABEL[selectedStock.unit] ?? selectedStock.unit) : '—'}
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">หน่วย</label>
-              <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white">
-                <option>กิโลกรัม</option>
-                <option>ลิตร</option>
-                <option>กรัม</option>
-              </select>
-            </div>
+            {selectedStock && form.amount && Number(form.amount) > selectedStock.amount && (
+              <p className="mt-1 text-[11px] text-rose-500 font-bold">
+                ⚠️ เกินปริมาณในคลัง (เหลือ {selectedStock.amount} {MEDICINE_UNIT_LABEL[selectedStock.unit] ?? selectedStock.unit})
+              </p>
+            )}
           </div>
-          <button onClick={handleAdd} disabled={saving || !form.formulaId || !form.amount}
-            className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm">
-            บันทึกการใส่ปุ๋ย
+
+          {/* หมายเหตุ */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">หมายเหตุ</label>
+            <input
+              type="text"
+              value={form.note}
+              onChange={e => setForm({ ...form, note: e.target.value })}
+              placeholder="หมายเหตุเพิ่มเติม..."
+              className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white"
+            />
+          </div>
+
+          <button
+            onClick={handleAdd}
+            disabled={saving || !form.stockId || !form.amount || Number(form.amount) <= 0}
+            className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm"
+          >
+            {saving ? 'กำลังบันทึก...' : 'บันทึกการใส่ปุ๋ย'}
           </button>
+          <p className="text-[10px] text-slate-400 text-center">
+            * ระบบจะหักปริมาณปุ๋ยจากคลังสารเคมีอัตโนมัติเมื่อบันทึก
+          </p>
         </div>
 
-        {/* ── ประวัติ ── */}
-        <h2 className="font-bold text-sm text-slate-800 dark:text-white">ประวัติการใส่ปุ๋ย ({records.length})</h2>
-        {records.length === 0 ? (
-          <p className="text-center text-slate-500 dark:text-slate-400 text-sm py-6">ยังไม่มีบันทึก</p>
-        ) : (
-          <div className="space-y-2">
-            {records.map(r => (
-              <div key={r.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex justify-between items-start">
-                <div>
-                  <p className="font-bold text-sm text-slate-800 dark:text-white">{r.formulaName}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{r.npk} · {GROWTH_STAGE_LABEL[r.stage]}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{r.date} · {r.amount} {r.unit}</p>
-                </div>
-                <button onClick={() => deleteFertilizerRecord(r.id).then(loadData)} className="text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-              </div>
-            ))}
+        {/* ── ประวัติการใส่ปุ๋ย (ปฏิทิน) ── */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-emerald-50 dark:bg-emerald-900/20">
+            <button onClick={goPrevMonth} className="p-1.5 rounded-lg hover:bg-white/40 text-emerald-700 dark:text-emerald-400">
+              <ChevronLeft size={18} />
+            </button>
+            <div className="text-center">
+              <h2 className="font-bold text-sm text-emerald-700 dark:text-emerald-400">
+                {THAI_MONTHS_FULL[calendarMonth.getMonth()]} {calendarMonth.getFullYear() + 543}
+              </h2>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">ใส่ปุ๋ย {monthCount} ครั้ง</p>
+            </div>
+            <button onClick={goNextMonth} className="p-1.5 rounded-lg hover:bg-white/40 text-emerald-700 dark:text-emerald-400">
+              <ChevronRight size={18} />
+            </button>
           </div>
-        )}
+
+          <div className="p-3 space-y-3">
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {['อา','จ','อ','พ','พฤ','ศ','ส'].map((d, i) => (
+                <div key={i} className={`text-[11px] font-bold py-1 ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {calendarGrid.map((day, i) => {
+                if (day === null) return <div key={i} className="aspect-square" />;
+                const year = calendarMonth.getFullYear();
+                const month = calendarMonth.getMonth();
+                const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const cellRecords = recordsByDate.get(key);
+                const today = new Date();
+                const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+                const isSelected = selectedDate === key;
+                const dow = (i % 7);
+                const hasData = !!cellRecords;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSelectedDate(isSelected ? null : key)}
+                    className={`aspect-square rounded-lg border flex flex-col items-center justify-center text-[10px] p-0.5 transition-all cursor-pointer hover:scale-105 ${
+                      isSelected
+                        ? 'bg-emerald-200 dark:bg-emerald-900/50 border-emerald-500 ring-2 ring-emerald-400 scale-105'
+                        : hasData
+                          ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 font-bold'
+                          : isToday
+                            ? 'bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600'
+                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <span className={`text-[11px] font-bold ${
+                      isSelected
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : hasData
+                          ? 'text-emerald-700 dark:text-emerald-400'
+                          : dow === 0
+                            ? 'text-rose-500'
+                            : dow === 6
+                              ? 'text-blue-500'
+                              : 'text-slate-700 dark:text-slate-200'
+                    }`}>
+                      {day}
+                    </span>
+                    {cellRecords && (
+                      <span className="text-[8px] font-bold leading-none mt-0.5 text-emerald-600 dark:text-emerald-400">
+                        {cellRecords.length}×
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* ── Popup ประวัติการใส่ปุ๋ยของวันที่เลือก ── */}
+      {selectedDate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setSelectedDate(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-h-[85vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-emerald-50 dark:bg-emerald-900/20 rounded-t-2xl">
+              <div>
+                <h3 className="font-bold text-base text-emerald-700 dark:text-emerald-400">
+                  {(() => {
+                    const [y, m, d] = selectedDate.split('-').map(Number);
+                    return `${d} ${THAI_MONTHS_FULL[m - 1]} ${y + 543}`;
+                  })()}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  ใส่ปุ๋ย {(recordsByDate.get(selectedDate) ?? []).length} ครั้ง
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedDate(null)}
+                className="p-1.5 rounded-lg hover:bg-white/40 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {(recordsByDate.get(selectedDate) ?? []).length === 0 ? (
+                <div className="text-center py-8">
+                  <Leaf className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-sm text-slate-400 dark:text-slate-500">
+                    ไม่มีการใส่ปุ๋ยในวันนี้
+                  </p>
+                </div>
+              ) : (
+                (recordsByDate.get(selectedDate) ?? []).map(r => (
+                  <div key={r.id} className="bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-800 dark:text-white">{r.formulaName}</p>
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                          {GROWTH_STAGE_LABEL[r.stage] ?? r.stage}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (confirm('ลบบันทึกนี้?')) {
+                            deleteFertilizerRecord(r.id).then(() => {
+                              loadData();
+                              setSelectedDate(null);
+                            });
+                          }
+                        }}
+                        className="text-slate-400 hover:text-red-500 flex-shrink-0 ml-2"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <div className="flex justify-between text-xs bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg">
+                      <span className="text-slate-500 dark:text-slate-400">N-P-K</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">{r.npk}</span>
+                    </div>
+                    <div className="flex justify-between text-xs bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg">
+                      <span className="text-slate-500 dark:text-slate-400">ปริมาณ</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold">
+                        {r.amount} {MEDICINE_UNIT_LABEL[r.unit as MedicineUnit] ?? r.unit}
+                      </span>
+                    </div>
+                    {r.note && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 italic px-1">
+                        💬 {r.note}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => setSelectedDate(null)}
+                className="w-full py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

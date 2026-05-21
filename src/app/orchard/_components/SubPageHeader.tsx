@@ -26,6 +26,12 @@ export default function SubPageHeader({
   const { isDark, toggleTheme } = useTheme();
 
   const handleBack = () => {
+    // ถ้ามีประวัติ navigation ก่อนหน้า → ย้อนกลับไปหน้านั้น
+    // ไม่งั้น fallback ไปหน้าหลักของสวน
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
     if (isDurianBackyard) {
       router.push(`/orchard/farm-map?id=${orchardId}`);
     } else {

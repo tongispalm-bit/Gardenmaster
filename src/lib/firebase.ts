@@ -305,20 +305,34 @@ export type MedicineItem = {
   amount: string;
 };
 
-export type HospitalRecord = {
-  id: string;
-  orchardId: string;
-  treeId: string;          // TreeProfile id
-  treeNumber: string;      // รหัสต้น (เก็บไว้แสดงผล)
-  dateFound: string;       // วันที่พบอาการ
-  symptoms: string;        // อาการที่พบ
-  photos: string[];        // base64 หรือ URL (1-6 รูป)
+/** snapshot ของข้อมูลก่อนแก้ไข — เก็บใน editHistory */
+export type HospitalEditEntry = {
+  editedAt: number;
+  symptoms: string;
   severity: Severity;
   medicines: MedicineItem[];
   treatmentResult: TreatmentResult | null;
-  recoveryDate: string;    // วันหายป่วย
+  status: HospitalStatus;
+  recoveryDate: string;
+  note: string;
+};
+
+export type HospitalRecord = {
+  id: string;
+  orchardId: string;
+  treeId: string;
+  treeNumber: string;
+  dateFound: string;
+  symptoms: string;
+  photos: string[];
+  severity: Severity;
+  medicines: MedicineItem[];
+  treatmentResult: TreatmentResult | null;
+  recoveryDate: string;
   status: HospitalStatus;
   note: string;
+  /** ประวัติการแก้ไข — เก็บ snapshot ทุกครั้งที่ update */
+  editHistory?: HospitalEditEntry[];
   createdAt: number;
   updatedAt: number;
 };
@@ -411,12 +425,25 @@ export async function deleteWaterRecord(id: string) {
 }
 
 // ── Fertilizer Formulas & Records ───────────────────────────
-export type GrowthStage = 'leaf' | 'flower' | 'fruit' | 'recovery';
+export type GrowthStage =
+  | 'recovery'      // ฟื้นฟูรากหลังเก็บเกี่ยว
+  | 'leaf'          // บำรุงใบ
+  | 'flower'        // ออกดอก/ติดผล ช่วงดอกบาน
+  | 'tail'          // ระยะหางแย้
+  | 'small_fruit'   // ระยะผลเล็ก/ไข่ไก่
+  | 'milk_can'      // ระยะกระป๋องนม
+  | 'expand_lobe'   // ระยะขยายพู
+  | 'harvest';      // ระยะเก็บเกี่ยว
+
 export const GROWTH_STAGE_LABEL: Record<GrowthStage, string> = {
-  leaf: 'บำรุงใบ',
-  flower: 'ออกดอก',
-  fruit: 'ติดผล',
-  recovery: 'หลังเก็บเกี่ยว',
+  recovery:    '🌱 ฟื้นฟูรากหลังเก็บเกี่ยว',
+  leaf:        '🍃 บำรุงใบ',
+  flower:      '🌸 ออกดอก / ติดผล ช่วงดอกบาน',
+  tail:        '🦎 ระยะหางแย้',
+  small_fruit: '🥚 ระยะผลเล็ก / ไข่ไก่',
+  milk_can:    '🥛 ระยะกระป๋องนม',
+  expand_lobe: '🌰 ระยะขยายพู',
+  harvest:     '✂️ ระยะเก็บเกี่ยว',
 };
 
 export type FertilizerFormula = {
@@ -432,12 +459,16 @@ export type FertilizerRecord = {
   id: string;
   orchardId: string;
   date: string;
-  formulaId: string;
+  /** id ของรายการปุ๋ยใน nutrientItems (คลังสารเคมี) */
+  stockId?: string;
+  /** สูตรปุ๋ยจาก nutrientItems.formula หรือ formula doc */
+  formulaId?: string;
   formulaName: string;
   npk: string;
   stage: GrowthStage;
   amount: number;
   unit: string;       // กิโลกรัม / ลิตร
+  note?: string;
   createdAt: number;
 };
 
@@ -476,7 +507,25 @@ export async function deleteFertilizerRecord(id: string) {
 }
 
 // ── Spray Records ────────────────────────────────────────────
-export type SprayMedicine = { name: string; amount: string; unit: string };
+/** กลุ่มของยาที่ใช้พ่น — ลิงก์กับคลังสารเคมี */
+export type SprayMedicineGroup = 'insecticide' | 'fungicide' | 'hormone' | 'fertilizer';
+
+export const SPRAY_GROUP_LABEL: Record<SprayMedicineGroup, string> = {
+  insecticide: 'ยาฆ่าแมลง',
+  fungicide:   'ยารา',
+  hormone:     'ฮอร์โมน',
+  fertilizer:  'ปุ๋ย',
+};
+
+export type SprayMedicine = {
+  /** กลุ่มของยา (ลิงก์ไปยัง collection ใดใน stock) */
+  group?: SprayMedicineGroup;
+  /** id ของรายการใน stock (medicineItems / nutrientItems) — สำหรับหักปริมาณ */
+  stockId?: string;
+  name: string;
+  amount: string;
+  unit: string;
+};
 
 export type SprayRecord = {
   id: string;
@@ -606,4 +655,174 @@ export async function getDurianFruitRecords(orchardId: string): Promise<DurianFr
 
 export async function deleteDurianFruitRecord(id: string) {
   await deleteDoc(doc(db, 'durianFruitRecords', id));
+}
+
+
+// ── Medicine Stock (กลุ่มยา) ────────────────────────────────
+/** ประเภทยา: ร้อน (กำจัดศัตรู) / เย็น (บำรุง) */
+export type MedicineCategory = 'hot' | 'cold';
+/** หน่วยปริมาณ */
+export type MedicineUnit = 'liter' | 'cc' | 'kg' | 'gram';
+/** ชนิดของยา (เมนูย่อย) — ยารา / ยาฆ่าแมลง */
+export type MedicineType = 'fungicide' | 'insecticide';
+
+export const MEDICINE_CATEGORY_LABEL: Record<MedicineCategory, string> = {
+  hot: 'ยาร้อน',
+  cold: 'ยาเย็น',
+};
+
+export const MEDICINE_UNIT_LABEL: Record<MedicineUnit, string> = {
+  liter: 'ลิตร',
+  cc: 'ซีซี',
+  kg: 'กิโล',
+  gram: 'กรัม',
+};
+
+export const MEDICINE_TYPE_LABEL: Record<MedicineType, string> = {
+  fungicide: 'ยารา',
+  insecticide: 'ยาฆ่าแมลง',
+};
+
+export type MedicineItemRecord = {
+  id: string;
+  orchardId: string;
+  /** ยารา / ยาฆ่าแมลง (เมนูย่อย) */
+  type: MedicineType;
+  category: MedicineCategory;
+  name: string;
+  amount: number;
+  unit: MedicineUnit;
+  /** กลุ่มยา 1-9 */
+  group: number;
+  /** ราคา (บาท) */
+  price?: number;
+  /** วันที่ซื้อ (YYYY-MM-DD) — ใช้คำนวณรายจ่ายเดือน/ปี */
+  purchaseDate?: string;
+  /** รูปภาพ (base64) สูงสุด 6 รูป */
+  photos?: string[];
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export async function addMedicineItem(record: Omit<MedicineItemRecord, 'id'>) {
+  const docRef = await addDoc(collection(db, 'medicineItems'), record);
+  return docRef.id;
+}
+
+export async function getMedicineItems(orchardId: string, type?: MedicineType): Promise<MedicineItemRecord[]> {
+  const snapshot = await getDocs(collection(db, 'medicineItems'));
+  const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as MedicineItemRecord[];
+  return items
+    .filter(i => i.orchardId === orchardId && (type ? i.type === type : true))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function updateMedicineItem(id: string, data: Partial<Omit<MedicineItemRecord, 'id'>>) {
+  await updateDoc(doc(db, 'medicineItems', id), { ...data, updatedAt: Date.now() });
+}
+
+export async function deleteMedicineItem(id: string) {
+  await deleteDoc(doc(db, 'medicineItems', id));
+}
+
+
+// ── Nutrient Stock (ธาตุอาหาร) — ใช้ schema เดียวกับ MedicineItemRecord ────
+/** ชนิดธาตุอาหาร — ปุ๋ย / ฮอร์โมน (placeholder ปรับภายหลัง) */
+export type NutrientType = 'fertilizer' | 'hormone';
+
+export const NUTRIENT_TYPE_LABEL: Record<NutrientType, string> = {
+  fertilizer: 'ปุ๋ย',
+  hormone: 'ฮอร์โมน',
+};
+
+export type NutrientItemRecord = {
+  id: string;
+  orchardId: string;
+  type: NutrientType;
+  category: MedicineCategory; // ใช้ ร้อน/เย็น เหมือนยา (overridden เป็น powder/liquid/organic ฯลฯ ผ่าน UI)
+  name: string;
+  /** สูตร เช่น 15-15-15, 25-7-7 */
+  formula?: string;
+  amount: number;
+  unit: MedicineUnit;
+  group: number;
+  price?: number;
+  purchaseDate?: string;
+  photos?: string[];
+  note?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export async function addNutrientItem(record: Omit<NutrientItemRecord, 'id'>) {
+  const docRef = await addDoc(collection(db, 'nutrientItems'), record);
+  return docRef.id;
+}
+
+export async function getNutrientItems(orchardId: string, type?: NutrientType): Promise<NutrientItemRecord[]> {
+  const snapshot = await getDocs(collection(db, 'nutrientItems'));
+  const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as NutrientItemRecord[];
+  return items
+    .filter(i => i.orchardId === orchardId && (type ? i.type === type : true))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function updateNutrientItem(id: string, data: Partial<Omit<NutrientItemRecord, 'id'>>) {
+  await updateDoc(doc(db, 'nutrientItems', id), { ...data, updatedAt: Date.now() });
+}
+
+export async function deleteNutrientItem(id: string) {
+  await deleteDoc(doc(db, 'nutrientItems', id));
+}
+
+
+// ── Stock deduction helper (หักปริมาณจากคลังเมื่อพ่นยา) ────────
+/**
+ * หักปริมาณจาก stock — ลดจากค่า amount ที่มี
+ * - กลุ่ม medicine (insecticide/fungicide) → medicineItems
+ * - กลุ่ม nutrient (hormone/fertilizer) → nutrientItems
+ * - ถ้าผลลัพธ์ <= 0 จะไม่ลบ record (เก็บไว้แต่ amount=0)
+ * - หน่วยใน spray ต่างจาก stock จะ skip การหัก (เก็บแค่ log)
+ *
+ * @returns รายงานผล: { stockId, oldAmount, newAmount, deducted }[]
+ */
+export async function deductFromStock(
+  items: Array<{ group?: SprayMedicineGroup; stockId?: string; amount: string; unit: string }>
+): Promise<Array<{ stockId: string; ok: boolean; reason?: string }>> {
+  const results: Array<{ stockId: string; ok: boolean; reason?: string }> = [];
+  for (const it of items) {
+    if (!it.stockId || !it.group) {
+      results.push({ stockId: it.stockId ?? '', ok: false, reason: 'no stock link' });
+      continue;
+    }
+    const used = Number(it.amount);
+    if (!used || isNaN(used) || used <= 0) {
+      results.push({ stockId: it.stockId, ok: false, reason: 'invalid amount' });
+      continue;
+    }
+    try {
+      const isMedicine = it.group === 'insecticide' || it.group === 'fungicide';
+      const collectionName = isMedicine ? 'medicineItems' : 'nutrientItems';
+      const ref = doc(db, collectionName, it.stockId);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        results.push({ stockId: it.stockId, ok: false, reason: 'not found' });
+        continue;
+      }
+      const data = snap.data() as { amount: number; unit: string };
+      // ตรวจหน่วย — ถ้าต่างกันให้ skip (ไม่หัก เพื่อไม่ให้ข้อมูลเพี้ยน)
+      if (data.unit !== it.unit) {
+        results.push({ stockId: it.stockId, ok: false, reason: `unit mismatch (stock=${data.unit}, used=${it.unit})` });
+        continue;
+      }
+      const newAmount = Math.max(0, (data.amount ?? 0) - used);
+      await updateDoc(ref, { amount: newAmount, updatedAt: Date.now() });
+      results.push({ stockId: it.stockId, ok: true });
+    } catch (e) {
+      console.error('[deductFromStock] error', e);
+      results.push({ stockId: it.stockId, ok: false, reason: 'error' });
+    }
+  }
+  return results;
 }
