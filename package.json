@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "firebase": "^12.12.1",

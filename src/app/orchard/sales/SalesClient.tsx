@@ -7,16 +7,17 @@ import {
   getSaleRecords,
   addSaleRecord,
   deleteSaleRecord,
+  isDurianFarm,
   type Orchard,
   type SaleRecord,
   type DurianGrade,
 } from '@/lib/firebase';
-import { ShoppingCart, Trash2 } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, X } from 'lucide-react';
 import SubMenuTabs from '../_components/SubMenuTabs';
 import SubPageHeader from '../_components/SubPageHeader';
 
-const GRADES: DurianGrade[] = ['AB', 'C', 'D', 'ตกไซร์', 'อินโด', 'จัมโบ้', 'เข้าห้องเย็น', 'เอาไว้เอง'];
-const CUT_RATES = [5, 6, 7, 8, 9, 10];
+const GRADES: DurianGrade[] = ['เบอร์หัว', 'ดอกดำ', 'เบอร์รวม'];
+const CUT_RATES = [4, 5, 6, 7, 8, 9, 10];
 
 export default function SalesClient() {
   const router = useRouter();
@@ -28,11 +29,12 @@ export default function SalesClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
-    grade: 'AB' as DurianGrade,
+    grade: 'เบอร์หัว' as DurianGrade,
     weight: 0,
     pricePerKg: 0,
     cutRate: 5,
@@ -62,13 +64,12 @@ export default function SalesClient() {
   };
 
   // Computed values
-  const isKeepForSelf = form.grade === 'เอาไว้เอง';
-  const totalAmount = isKeepForSelf ? 0 : form.weight * form.pricePerKg;
+  const totalAmount = form.weight * form.pricePerKg;
   const cutCost = form.cutRate * form.weight;
   const netAmount = totalAmount - cutCost;
 
   const handleAdd = async () => {
-    if (!form.weight || (!isKeepForSelf && !form.pricePerKg)) return;
+    if (!form.weight || !form.pricePerKg) return;
     setSaving(true);
     try {
       await addSaleRecord({
@@ -76,7 +77,7 @@ export default function SalesClient() {
         date: form.date,
         grade: form.grade,
         weight: form.weight,
-        pricePerKg: isKeepForSelf ? 0 : form.pricePerKg,
+        pricePerKg: form.pricePerKg,
         totalAmount,
         cutRate: form.cutRate,
         cutCost,
@@ -86,13 +87,14 @@ export default function SalesClient() {
       });
       setForm({
         date: new Date().toISOString().split('T')[0],
-        grade: 'AB',
+        grade: 'เบอร์หัว',
         weight: 0,
         pricePerKg: 0,
         cutRate: 5,
         note: '',
       });
       await loadData();
+      setShowAddModal(false);
     } catch {
       alert('บันทึกไม่สำเร็จ!');
     } finally {
@@ -152,7 +154,7 @@ export default function SalesClient() {
     );
   }
 
-  const isDurianBackyard = orchard.name === 'ทุเรียนหลังบ้าน';
+  const isDurianBackyard = isDurianFarm(orchard.name);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8">
@@ -167,132 +169,13 @@ export default function SalesClient() {
       {isDurianBackyard && null}
 
       <div className="px-5 py-6 max-w-4xl mx-auto space-y-6">
-        {/* ── ฟอร์มบันทึก ── */}
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <h2 className="text-lg font-bold text-pink-700 dark:text-pink-400 mb-4">
-            บันทึกการขาย
-          </h2>
-          <div className="space-y-3">
-            {/* วันที่ + ประเภท */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่</label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ประเภท</label>
-                <select
-                  value={form.grade}
-                  onChange={(e) => setForm({ ...form, grade: e.target.value as DurianGrade })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white"
-                >
-                  {GRADES.map((g) => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* น้ำหนัก + ราคา/กก */}
-            <div className={`grid gap-3 ${isKeepForSelf ? 'grid-cols-1' : 'grid-cols-2'}`}>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">น้ำหนัก (กก.)</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.weight || ''}
-                  onChange={(e) => setForm({ ...form, weight: Number(e.target.value) })}
-                  placeholder="0"
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white"
-                />
-              </div>
-              {!isKeepForSelf && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ราคา/กก. (บาท)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.pricePerKg || ''}
-                    onChange={(e) => setForm({ ...form, pricePerKg: Number(e.target.value) })}
-                    placeholder="0"
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* จำนวนเงิน (auto) — ซ่อนถ้าเอาไว้เอง */}
-            {!isKeepForSelf && (
-              <div className="bg-pink-50 dark:bg-pink-900/20 p-3 rounded-xl">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">จำนวนเงิน</span>
-                  <span className="font-bold text-pink-700 dark:text-pink-300">
-                    {totalAmount.toLocaleString()} ฿
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* แจ้งว่าเอาไว้เอง */}
-            {isKeepForSelf && (
-              <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl">
-                <p className="text-sm text-amber-700 dark:text-amber-300 font-bold">
-                  🏠 เอาไว้เอง — คิดเฉพาะค่าตัด ไม่คิดราคาขาย
-                </p>
-              </div>
-            )}
-
-            {/* ค่าตัด */}
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ค่าตัด (บาท/กก.)</label>
-              <select
-                value={form.cutRate}
-                onChange={(e) => setForm({ ...form, cutRate: Number(e.target.value) })}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white"
-              >
-                {CUT_RATES.map((r) => (
-                  <option key={r} value={r}>{r} บาท/กก.</option>
-                ))}
-              </select>
-            </div>
-
-            {/* ค่าตัดรวม + ยอดสุทธิ (auto) */}
-            <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-300">ค่าตัดรวม ({form.cutRate}×{form.weight} กก.)</span>
-                <span className="font-bold text-red-600 dark:text-red-400">-{cutCost.toLocaleString()} ฿</span>
-              </div>
-              <div className="flex justify-between text-base border-t border-slate-200 dark:border-slate-600 pt-2">
-                <span className="font-bold text-slate-800 dark:text-white">ยอดสุทธิ</span>
-                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-lg">
-                  {netAmount.toLocaleString()} ฿
-                </span>
-              </div>
-            </div>
-
-            {/* หมายเหตุ */}
-            <input
-              type="text"
-              value={form.note}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-              placeholder="หมายเหตุ (ไม่บังคับ)"
-              className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white"
-            />
-
-            <button
-              onClick={handleAdd}
-              disabled={saving || !form.weight || (!isKeepForSelf && !form.pricePerKg)}
-              className="w-full py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl font-bold transition-all"
-            >
-              {saving ? 'กำลังบันทึก...' : 'บันทึกการขาย'}
-            </button>
-          </div>
-        </div>
+        {/* ── ปุ่มเปิด popup บันทึกการขาย ── */}
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 shadow-md"
+        >
+          <Plus size={18} /> บันทึกการขาย
+        </button>
 
         {/* ── สรุปรายวัน ── */}
         {dailySummaries.length > 0 && (
@@ -378,6 +261,114 @@ export default function SalesClient() {
           📋 ดูประวัติรายการ ({records.length})
         </button>
       </div>
+
+      {/* ── Popup: บันทึกการขาย ── */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowAddModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-pink-50 dark:bg-pink-900/20 rounded-t-2xl">
+              <h3 className="font-bold text-base text-pink-700 dark:text-pink-400 flex items-center gap-2">
+                <ShoppingCart size={18} /> บันทึกการขาย
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-500">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่</label>
+                  <input type="date" value={form.date}
+                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ประเภท</label>
+                  <select value={form.grade}
+                    onChange={(e) => setForm({ ...form, grade: e.target.value as DurianGrade })}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white">
+                    {GRADES.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">น้ำหนัก (กก.)</label>
+                  <input type="number" min={0} value={form.weight || ''}
+                    onChange={(e) => setForm({ ...form, weight: Number(e.target.value) })}
+                    placeholder="0"
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ราคา/กก. (บาท)</label>
+                  <input type="number" min={0} value={form.pricePerKg || ''}
+                    onChange={(e) => setForm({ ...form, pricePerKg: Number(e.target.value) })}
+                    placeholder="0"
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white" />
+                </div>
+              </div>
+
+              <div className="bg-pink-50 dark:bg-pink-900/20 p-3 rounded-xl">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">จำนวนเงิน</span>
+                  <span className="font-bold text-pink-700 dark:text-pink-300">
+                    {totalAmount.toLocaleString()} ฿
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ค่าเก็บ (บาท/กก.)</label>
+                <select value={form.cutRate}
+                  onChange={(e) => setForm({ ...form, cutRate: Number(e.target.value) })}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white">
+                  {CUT_RATES.map((r) => (
+                    <option key={r} value={r}>{r} บาท/กก.</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-300">ค่าเก็บรวม ({form.cutRate}×{form.weight} กก.)</span>
+                  <span className="font-bold text-red-600 dark:text-red-400">-{cutCost.toLocaleString()} ฿</span>
+                </div>
+                <div className="flex justify-between text-base border-t border-slate-200 dark:border-slate-600 pt-2">
+                  <span className="font-bold text-slate-800 dark:text-white">ยอดสุทธิ</span>
+                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-lg">
+                    {netAmount.toLocaleString()} ฿
+                  </span>
+                </div>
+              </div>
+
+              <input type="text" value={form.note}
+                onChange={(e) => setForm({ ...form, note: e.target.value })}
+                placeholder="หมายเหตุ (ไม่บังคับ)"
+                className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white" />
+            </div>
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+              <button onClick={() => setShowAddModal(false)} disabled={saving}
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm disabled:opacity-50">
+                ยกเลิก
+              </button>
+              <button onClick={handleAdd}
+                disabled={saving || !form.weight || !form.pricePerKg}
+                className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm">
+                {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal ประวัติรายการ ── */}
       {showHistory && (

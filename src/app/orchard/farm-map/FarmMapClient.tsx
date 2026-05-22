@@ -7,58 +7,63 @@ import {
   getTreeProfiles,
   addTreeProfile,
   updateTreeProfile,
+  deleteTreeProfile,
   getHospitalRecords,
+  getFarmMapConfig,
+  saveFarmMapConfig,
+  getVarietiesFor,
+  getTreeCodePrefix,
+  isMangosteenFarm,
   type Orchard,
   type TreeProfile,
   type HospitalRecord,
   type Severity,
 } from '@/lib/firebase';
-import { X, Home } from 'lucide-react';
+import {
+  X, Home, Moon, Sun,
+  Edit3, MapPin, Plus, Minus, Eye, Trash2,
+} from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
-import { Moon, Sun } from 'lucide-react';
 import SubMenuTabs from '../_components/SubMenuTabs';
 
 // ── Constants ────────────────────────────────────────────────
-const ROWS = 11;
-const COLS = 9;
-
-const VARIETIES = [
-  'หมอนทอง',
-  'ชะนี',
-  'กระดุม',
-  'พวงมณี',
-  'ก้านยาว',
-  'มูซานคิง',
-  'โอฉี',
-  'นวลทองจันทร์',
-];
+const DEFAULT_ROWS = 11;
+const DEFAULT_COLS = 9;
+const MAX_ROWS = 30;
+const MAX_COLS = 20;
+// default blocked: R1C1-R1C8 (จากสเปกเดิม)
+const DEFAULT_BLOCKED = ['1,1','1,2','1,3','1,4','1,5','1,6','1,7','1,8'];
 
 type Status = 'normal' | 'watch' | 'seedling';
+type Mode = 'view' | 'edit-grid' | 'edit-zone';
+type Zone = 'A' | 'B' | null | undefined;
 
 const STATUS_META: Record<Status, { label: string; bg: string; bgDark: string; icon: string; ring: string }> = {
-  normal:   { label: 'ปกติ',      bg: 'bg-emerald-100', bgDark: 'dark:bg-emerald-900/40', icon: '🌳', ring: 'ring-emerald-400' },
-  watch:    { label: 'เฝ้าระวัง',  bg: 'bg-rose-100',    bgDark: 'dark:bg-rose-900/40',    icon: '🌲', ring: 'ring-rose-400' },
-  seedling: { label: 'ต้นกล้า',    bg: 'bg-sky-100',     bgDark: 'dark:bg-sky-900/40',     icon: '🌴', ring: 'ring-sky-400' },
+  normal:   { label: 'ปกติ',     bg: 'bg-emerald-100', bgDark: 'dark:bg-emerald-900/40', icon: '🌳', ring: 'ring-emerald-400' },
+  watch:    { label: 'เฝ้าระวัง', bg: 'bg-rose-100',    bgDark: 'dark:bg-rose-900/40',    icon: '🌲', ring: 'ring-rose-400' },
+  seedling: { label: 'ต้นกล้า',   bg: 'bg-sky-100',     bgDark: 'dark:bg-sky-900/40',     icon: '🌴', ring: 'ring-sky-400' },
 };
 
-// สีความรุนแรงจากห้องพยาบาล (override สีปกติ)
 const SEVERITY_BG: Record<Severity, { bg: string; bgDark: string; label: string }> = {
   mild:     { bg: 'bg-yellow-200', bgDark: 'dark:bg-yellow-800/60', label: 'เล็กน้อย' },
   moderate: { bg: 'bg-orange-200', bgDark: 'dark:bg-orange-800/60', label: 'ปานกลาง' },
   severe:   { bg: 'bg-red-200',    bgDark: 'dark:bg-red-800/60',    label: 'รุนแรง' },
 };
 
-// กำหนดว่า cell ไหนมีต้น (ตามสเปก ข้อ 2)
-function hasTree(row: number, col: number): boolean {
-  // R1C1–R1C8 ว่าง, R1C9 มีต้น
-  if (row === 1) return col === 9;
-  // R2–R11 ทุก cell มีต้น
-  return true;
-}
+// แถบสีโซน (ขอบซ้าย)
+const ZONE_RING: Record<'A' | 'B', string> = {
+  A: 'ring-2 ring-violet-500',
+  B: 'ring-2 ring-cyan-500',
+};
 
-// รหัสต้นเริ่มต้น B0304 = R3C4
-function defaultTreeNumber(row: number, col: number): string {
-  return `B${String(row).padStart(2, '0')}${String(col).padStart(2, '0')}`;
+const ZONE_BADGE: Record<'A' | 'B', string> = {
+  A: 'bg-violet-500 text-white',
+  B: 'bg-cyan-500 text-white',
+};
+
+function defaultTreeNumber(orchardName: string | undefined, row: number, col: number): string {
+  const prefix = getTreeCodePrefix(orchardName);
+  return `${prefix}${String(row).padStart(2, '0')}${String(col).padStart(2, '0')}`;
 }
 
 export default function FarmMapClient() {
@@ -73,6 +78,11 @@ export default function FarmMapClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // เก็บ config เป็น state แยก เพื่อให้แก้ระหว่าง edit mode ได้
+  const [rows, setRows] = useState(DEFAULT_ROWS);
+  const [cols, setCols] = useState(DEFAULT_COLS);
+  const [blockedCells, setBlockedCells] = useState<Set<string>>(new Set(DEFAULT_BLOCKED));
+
   // Modal state
   const [editing, setEditing] = useState<{ row: number; col: number } | null>(null);
   const [form, setForm] = useState({
@@ -80,9 +90,14 @@ export default function FarmMapClient() {
     status: 'normal' as Status,
     variety: 'หมอนทอง',
     age: 0,
+    zone: null as Zone,
     note: '',
   });
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Mode
+  const [mode, setMode] = useState<Mode>('view');
+  const [zoneBrush, setZoneBrush] = useState<Zone>('A'); // โซนที่จะทาลงใน edit-zone
 
   useEffect(() => {
     if (!orchardId) {
@@ -92,59 +107,58 @@ export default function FarmMapClient() {
     loadData();
   }, [orchardId]);
 
+  // สวนมังคุดไม่มีหน้าผังสวน — redirect ไปหน้าการดูแล
+  useEffect(() => {
+    if (orchard && orchard.name === 'สวนมังคุด') {
+      router.replace(`/orchard/care?id=${orchardId}`);
+    }
+  }, [orchard, orchardId, router]);
+
   const loadData = async () => {
     try {
-      const orchards = await getOrchards();
-      const found = orchards.find((o) => o.id === orchardId);
-      setOrchard(found || null);
+      const [orchards, treeData, hospData, cfg] = await Promise.all([
+        getOrchards(),
+        getTreeProfiles(orchardId),
+        getHospitalRecords(orchardId),
+        getFarmMapConfig(orchardId),
+      ]);
 
-      const data = await getTreeProfiles(orchardId);
-      const hospData = await getHospitalRecords(orchardId);
+      setOrchard(orchards.find((o) => o.id === orchardId) || null);
+      setHospitalRecords(hospData);
 
-      // ── Auto-sync: ใช้ "ประวัติการป่วยล่าสุด" เป็นแหล่งความจริง ──
-      // ดึงประวัติล่าสุดของแต่ละต้น
+      if (cfg) {
+        setRows(cfg.rows);
+        setCols(cfg.cols);
+        setBlockedCells(new Set(cfg.blockedCells));
+      } else {
+        // ใช้ default
+        setRows(DEFAULT_ROWS);
+        setCols(DEFAULT_COLS);
+        setBlockedCells(new Set(DEFAULT_BLOCKED));
+      }
+
+      // Auto-sync จาก hospital records
       const latestByTree = new Map<string, HospitalRecord>();
       for (const r of hospData) {
         const existing = latestByTree.get(r.treeId);
-        if (!existing || r.createdAt > existing.createdAt) {
-          latestByTree.set(r.treeId, r);
-        }
+        if (!existing || r.createdAt > existing.createdAt) latestByTree.set(r.treeId, r);
       }
-
-      // หาต้นที่ DB กับ "ประวัติล่าสุด" ไม่ตรงกัน → sync
-      const desync: { id: string; from: string; to: 'normal' | 'watch'; treeNumber: string }[] = [];
-      for (const t of data) {
-        if (t.status === 'seedling') continue; // ต้นกล้า ไม่แตะ
+      const desync: { id: string; to: 'normal' | 'watch' }[] = [];
+      for (const t of treeData) {
+        if (t.status === 'seedling') continue;
         const latest = latestByTree.get(t.id);
-        if (!latest) {
-          // ไม่มีประวัติเลย → status ควรเป็น normal
-          if (t.status !== 'normal') {
-            desync.push({ id: t.id, from: t.status, to: 'normal', treeNumber: t.treeNumber });
-          }
-        } else {
-          const expected: 'normal' | 'watch' = latest.status === 'treating' ? 'watch' : 'normal';
-          if (t.status !== expected) {
-            desync.push({ id: t.id, from: t.status, to: expected, treeNumber: t.treeNumber });
-          }
-        }
+        const expected: 'normal' | 'watch' = latest?.status === 'treating' ? 'watch' : 'normal';
+        if (t.status !== expected) desync.push({ id: t.id, to: expected });
       }
-
       if (desync.length > 0) {
-        // eslint-disable-next-line no-console
-        console.log('[FarmMap] Auto-sync from latest hospital record:', desync);
-        await Promise.all(
-          desync.map(d => updateTreeProfile(d.id, { status: d.to, updatedAt: Date.now() }))
-        );
-        const synced = data.map(t => {
+        await Promise.all(desync.map(d => updateTreeProfile(d.id, { status: d.to, updatedAt: Date.now() })));
+        setTrees(treeData.map(t => {
           const fix = desync.find(d => d.id === t.id);
           return fix ? { ...t, status: fix.to } : t;
-        });
-        setTrees(synced);
+        }));
       } else {
-        setTrees(data);
+        setTrees(treeData);
       }
-
-      setHospitalRecords(hospData);
     } catch (error) {
       console.error('Error loading farm map:', error);
     } finally {
@@ -152,40 +166,32 @@ export default function FarmMapClient() {
     }
   };
 
-  // Index trees by row,col for fast lookup
+  // ── Helpers ──
+  const hasTreeAt = (r: number, c: number) => !blockedCells.has(`${r},${c}`);
+
   const treeMap = useMemo(() => {
     const m = new Map<string, TreeProfile>();
     for (const t of trees) m.set(`${t.row},${t.col}`, t);
     return m;
   }, [trees]);
 
-  // ประวัติการป่วย "ล่าสุด" ของแต่ละต้น (createdAt มากสุด)
-  // เป็น single source of truth สำหรับสถานะสุขภาพและสีในผังสวน
   const latestRecordByTree = useMemo(() => {
     const m = new Map<string, HospitalRecord>();
     for (const r of hospitalRecords) {
       const existing = m.get(r.treeId);
-      if (!existing || r.createdAt > existing.createdAt) {
-        m.set(r.treeId, r);
-      }
+      if (!existing || r.createdAt > existing.createdAt) m.set(r.treeId, r);
     }
     return m;
   }, [hospitalRecords]);
 
-  // Hospital map: treeId → severity จาก "ประวัติล่าสุด" เท่านั้น
-  // ถ้าประวัติล่าสุด = recovered → ไม่มี override → กลับสีปกติ
   const hospitalMap = useMemo(() => {
     const m = new Map<string, Severity>();
     for (const [treeId, latest] of latestRecordByTree) {
-      if (latest.status === 'treating') {
-        m.set(treeId, latest.severity);
-      }
+      if (latest.status === 'treating') m.set(treeId, latest.severity);
     }
     return m;
   }, [latestRecordByTree]);
 
-  // Set ของ treeId ที่ "ยังป่วยอยู่" — ใช้กับปุ่มในฟอร์ม
-  // ตรงกับ "ประวัติล่าสุด.status === treating"
   const treeIdsActivelySick = useMemo(() => {
     const s = new Set<string>();
     for (const [treeId, latest] of latestRecordByTree) {
@@ -194,20 +200,15 @@ export default function FarmMapClient() {
     return s;
   }, [latestRecordByTree]);
 
-  // Summary
   const summary = useMemo(() => {
-    let total = 0;
-    let normal = 0;
-    let watch = 0;
-    let seedling = 0;
-    let hospital = 0;
-    for (let r = 1; r <= ROWS; r++) {
-      for (let c = 1; c <= COLS; c++) {
-        if (!hasTree(r, c)) continue;
+    let total = 0, normal = 0, watch = 0, seedling = 0, hospital = 0;
+    let zoneA = 0, zoneB = 0, zoneNone = 0;
+    for (let r = 1; r <= rows; r++) {
+      for (let c = 1; c <= cols; c++) {
+        if (!hasTreeAt(r, c)) continue;
         total++;
         const t = treeMap.get(`${r},${c}`);
         const dbStatus: Status = (t?.status ?? 'normal') as Status;
-        // ใช้ effective status (จากประวัติล่าสุด) ยกเว้น seedling
         let effStatus: Status = dbStatus;
         if (t && dbStatus !== 'seedling') {
           const latest = latestRecordByTree.get(t.id);
@@ -217,54 +218,181 @@ export default function FarmMapClient() {
         else if (effStatus === 'watch') watch++;
         else normal++;
         if (t && hospitalMap.has(t.id)) hospital++;
+        if (t?.zone === 'A') zoneA++;
+        else if (t?.zone === 'B') zoneB++;
+        else zoneNone++;
       }
     }
-    return { total, normal, watch, seedling, hospital };
-  }, [treeMap, hospitalMap, latestRecordByTree]);
+    return { total, normal, watch, seedling, hospital, zoneA, zoneB, zoneNone };
+  }, [treeMap, hospitalMap, latestRecordByTree, rows, cols, blockedCells]);
 
+  // ── Edit Grid actions ──
+  const persistConfig = async (nextRows: number, nextCols: number, nextBlocked: Set<string>) => {
+    setSaving(true);
+    try {
+      await saveFarmMapConfig(orchardId, {
+        rows: nextRows,
+        cols: nextCols,
+        blockedCells: Array.from(nextBlocked),
+      });
+    } catch (e) {
+      console.error('save config failed', e);
+      alert('บันทึกผังไม่สำเร็จ');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addRow = async () => {
+    if (rows >= MAX_ROWS) return;
+    const nextRows = rows + 1;
+    setRows(nextRows);
+    await persistConfig(nextRows, cols, blockedCells);
+  };
+
+  const removeRow = async () => {
+    if (rows <= 1) return;
+    const nextRows = rows - 1;
+    // ลบต้นในแถวที่ถูกตัดออก
+    const treesToRemove = trees.filter(t => t.row === rows);
+    if (treesToRemove.length > 0) {
+      const ok = confirm(`ลบแถว R${rows}? (มีต้น ${treesToRemove.length} ต้น จะถูกลบด้วย)`);
+      if (!ok) return;
+      await Promise.all(treesToRemove.map(t => deleteTreeProfile(t.id)));
+    }
+    // ลบ blocked cells ในแถวนั้น
+    const nextBlocked = new Set(blockedCells);
+    for (const k of blockedCells) {
+      const [r] = k.split(',').map(Number);
+      if (r === rows) nextBlocked.delete(k);
+    }
+    setRows(nextRows);
+    setBlockedCells(nextBlocked);
+    await persistConfig(nextRows, cols, nextBlocked);
+    await loadData();
+  };
+
+  const addCol = async () => {
+    if (cols >= MAX_COLS) return;
+    const nextCols = cols + 1;
+    setCols(nextCols);
+    await persistConfig(rows, nextCols, blockedCells);
+  };
+
+  const removeCol = async () => {
+    if (cols <= 1) return;
+    const nextCols = cols - 1;
+    const treesToRemove = trees.filter(t => t.col === cols);
+    if (treesToRemove.length > 0) {
+      const ok = confirm(`ลบคอลัมน์ C${cols}? (มีต้น ${treesToRemove.length} ต้น จะถูกลบด้วย)`);
+      if (!ok) return;
+      await Promise.all(treesToRemove.map(t => deleteTreeProfile(t.id)));
+    }
+    const nextBlocked = new Set(blockedCells);
+    for (const k of blockedCells) {
+      const [, c] = k.split(',').map(Number);
+      if (c === cols) nextBlocked.delete(k);
+    }
+    setCols(nextCols);
+    setBlockedCells(nextBlocked);
+    await persistConfig(rows, nextCols, nextBlocked);
+    await loadData();
+  };
+
+  const toggleCell = async (r: number, c: number) => {
+    const key = `${r},${c}`;
+    const isBlocked = blockedCells.has(key);
+    const nextBlocked = new Set(blockedCells);
+
+    if (isBlocked) {
+      // เปิดต้น
+      nextBlocked.delete(key);
+    } else {
+      // ปิดต้น — ลบต้นที่ตำแหน่งนี้ถ้ามี
+      const existing = treeMap.get(key);
+      if (existing) {
+        const ok = confirm(`ลบต้น ${existing.treeNumber} (R${r}C${c})?`);
+        if (!ok) return;
+        await deleteTreeProfile(existing.id);
+        await loadData();
+      }
+      nextBlocked.add(key);
+    }
+
+    setBlockedCells(nextBlocked);
+    await persistConfig(rows, cols, nextBlocked);
+  };
+
+  // ── Edit Zone actions ──
+  const applyZone = async (r: number, c: number) => {
+    const existing = treeMap.get(`${r},${c}`);
+    if (!existing) {
+      // สร้างต้นพร้อมโซน
+      try {
+        const varieties = getVarietiesFor(orchard?.name);
+        await addTreeProfile({
+          orchardId,
+          row: r, col: c,
+          treeNumber: defaultTreeNumber(orchard?.name, r, c),
+          status: 'normal',
+          variety: varieties[0],
+          age: 0,
+          zone: zoneBrush,
+          note: '',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        await loadData();
+      } catch (e) {
+        console.error(e);
+      }
+      return;
+    }
+    // toggle: ถ้าโซนปัจจุบัน = brush → ลบโซน
+    const nextZone: Zone = existing.zone === zoneBrush ? null : zoneBrush;
+    try {
+      await updateTreeProfile(existing.id, { zone: nextZone, updatedAt: Date.now() });
+      setTrees(prev => prev.map(t => t.id === existing.id ? { ...t, zone: nextZone } : t));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // ── Modal (แก้รายต้น) ──
   const openEdit = async (row: number, col: number) => {
     const existing = treeMap.get(`${row},${col}`);
     setEditing({ row, col });
     setFormError(null);
     if (existing) {
-      // ── ใช้ประวัติการป่วยล่าสุดเป็นตัวกำหนดสถานะสุขภาพอัตโนมัติ ──
-      // - ประวัติล่าสุด = treating → watch (เฝ้าระวัง)
-      // - ประวัติล่าสุด = recovered → normal (ปกติ)
-      // - ไม่มีประวัติ → normal (ปกติ)
-      // ยกเว้น seedling (ต้นกล้า) — เก็บค่าตาม DB
       const latest = latestRecordByTree.get(existing.id);
-      let effectiveStatus: Status;
-      if (existing.status === 'seedling') {
-        effectiveStatus = 'seedling';
-      } else if (latest) {
-        effectiveStatus = latest.status === 'treating' ? 'watch' : 'normal';
-      } else {
-        effectiveStatus = 'normal';
-      }
+      let effStatus: Status;
+      if (existing.status === 'seedling') effStatus = 'seedling';
+      else if (latest) effStatus = latest.status === 'treating' ? 'watch' : 'normal';
+      else effStatus = 'normal';
 
-      // Sync DB ถ้าไม่ตรงกับสถานะที่ควรเป็น
-      if (existing.status !== effectiveStatus && existing.status !== 'seedling') {
+      if (existing.status !== effStatus && existing.status !== 'seedling') {
         try {
-          await updateTreeProfile(existing.id, { status: effectiveStatus, updatedAt: Date.now() });
-          setTrees(prev => prev.map(t => t.id === existing.id ? { ...t, status: effectiveStatus } : t));
-        } catch (e) {
-          console.error('auto-sync failed', e);
-        }
+          await updateTreeProfile(existing.id, { status: effStatus, updatedAt: Date.now() });
+          setTrees(prev => prev.map(t => t.id === existing.id ? { ...t, status: effStatus } : t));
+        } catch {}
       }
 
       setForm({
         treeNumber: existing.treeNumber,
-        status: effectiveStatus,
-        variety: existing.variety || 'หมอนทอง',
+        status: effStatus,
+        variety: existing.variety || getVarietiesFor(orchard?.name)[0],
         age: existing.age || 0,
+        zone: existing.zone ?? null,
         note: existing.note || '',
       });
     } else {
+      const varieties = getVarietiesFor(orchard?.name);
       setForm({
-        treeNumber: defaultTreeNumber(row, col),
+        treeNumber: defaultTreeNumber(orchard?.name, row, col),
         status: 'normal',
-        variety: 'หมอนทอง',
+        variety: varieties[0],
         age: 0,
+        zone: null,
         note: '',
       });
     }
@@ -278,23 +406,11 @@ export default function FarmMapClient() {
   const handleSave = async () => {
     if (!editing) return;
     const tn = form.treeNumber.trim();
-    if (!tn) {
-      setFormError('กรุณากรอกรหัสต้น');
-      return;
-    }
-    if (tn.length > 20) {
-      setFormError('รหัสต้นต้องไม่เกิน 20 ตัวอักษร');
-      return;
-    }
-    // ป้องกันรหัสซ้ำ
+    if (!tn) { setFormError('กรุณากรอกรหัสต้น'); return; }
+    if (tn.length > 20) { setFormError('รหัสต้นต้องไม่เกิน 20 ตัวอักษร'); return; }
     const existing = treeMap.get(`${editing.row},${editing.col}`);
-    const dup = trees.find(
-      (t) => t.treeNumber === tn && t.id !== existing?.id
-    );
-    if (dup) {
-      setFormError(`รหัสนี้ซ้ำกับต้นที่ R${dup.row}C${dup.col}`);
-      return;
-    }
+    const dup = trees.find(t => t.treeNumber === tn && t.id !== existing?.id);
+    if (dup) { setFormError(`รหัสนี้ซ้ำกับต้นที่ R${dup.row}C${dup.col}`); return; }
 
     setSaving(true);
     try {
@@ -304,18 +420,19 @@ export default function FarmMapClient() {
           status: form.status,
           variety: form.variety,
           age: Number(form.age) || 0,
+          zone: form.zone ?? null,
           note: form.note,
           updatedAt: Date.now(),
         });
       } else {
         await addTreeProfile({
           orchardId,
-          row: editing.row,
-          col: editing.col,
+          row: editing.row, col: editing.col,
           treeNumber: tn,
           status: form.status,
           variety: form.variety,
           age: Number(form.age) || 0,
+          zone: form.zone ?? null,
           note: form.note,
           createdAt: Date.now(),
           updatedAt: Date.now(),
@@ -323,8 +440,25 @@ export default function FarmMapClient() {
       }
       await loadData();
       closeModal();
-    } catch (error) {
+    } catch {
       setFormError('บันทึกไม่สำเร็จ ลองอีกครั้ง');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteTree = async () => {
+    if (!editing) return;
+    const existing = treeMap.get(`${editing.row},${editing.col}`);
+    if (!existing) return;
+    if (!confirm(`ลบต้น ${existing.treeNumber}?`)) return;
+    setSaving(true);
+    try {
+      await deleteTreeProfile(existing.id);
+      await loadData();
+      closeModal();
+    } catch {
+      alert('ลบไม่สำเร็จ');
     } finally {
       setSaving(false);
     }
@@ -338,256 +472,400 @@ export default function FarmMapClient() {
     );
   }
 
+  // ── สวนมังคุด: ใช้ flow แบบเรียบง่าย (ไม่มีโซน/พยาบาล/พันธุ์/สถานะ) ──
+  const isMango = isMangosteenFarm(orchard.name);
+
+  // Force ปิดโหมด edit-zone ในสวนมังคุด
+  const effectiveMode: Mode = isMango && mode === 'edit-zone' ? 'view' : mode;
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300">
-      {/* Header — หน้าแรกของสวนทุเรียนหลังบ้าน */}
-      <header
-        className="text-white px-4 pt-4 pb-4"
-        style={{ backgroundColor: orchard.color }}
-      >
+      <header className="text-white px-4 pt-4 pb-4" style={{ backgroundColor: orchard.color }}>
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => router.push('/')}
-            className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-            title="หน้าแรก"
-          >
+          <button onClick={() => router.push('/')} className="p-1.5 hover:bg-white/20 rounded-full">
             <Home size={18} />
           </button>
           <div className="flex items-center gap-2 text-center">
             <span className="text-2xl">{orchard.icon}</span>
             <h1 className="text-lg font-bold">{orchard.name}</h1>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-          >
+          <button onClick={toggleTheme} className="p-1.5 hover:bg-white/20 rounded-full">
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
         </div>
       </header>
 
-      {/* Sub Menu Tabs */}
-      <SubMenuTabs activeTab="farm-map" orchardId={orchardId} />
+      <SubMenuTabs activeTab="farm-map" orchardId={orchardId} orchardName={orchard.name} />
 
       <div className="px-3 sm:px-6 py-3 max-w-6xl mx-auto">
-        {/* Summary Cards — แถวเดียว 4 ช่อง */}
-        <div className="grid grid-cols-4 gap-2 mb-3">
-          <SummaryCard label="ทั้งหมด" value={summary.total} accent="text-slate-700 dark:text-slate-200" />
-          <SummaryCard label="ปกติ" value={summary.normal} accent="text-emerald-500 dark:text-emerald-400" />
-          <SummaryCard label="เฝ้าระวัง" value={summary.watch} accent="text-rose-500 dark:text-rose-400" />
-          <SummaryCard label="ต้นกล้า" value={summary.seedling} accent="text-sky-500 dark:text-sky-400" />
-        </div>
-        {summary.hospital > 0 && (
+        {/* Summary Cards */}
+        {isMango ? (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 mb-3 text-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400">จำนวนต้นมังคุดทั้งหมด</p>
+            <p className="text-3xl font-extrabold text-purple-600 dark:text-purple-400 mt-1">
+              {summary.total} <span className="text-sm font-bold text-slate-500">ต้น</span>
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            <SummaryCard label="ทั้งหมด" value={summary.total} accent="text-slate-700 dark:text-slate-200" />
+            <SummaryCard label="ปกติ" value={summary.normal} accent="text-emerald-500 dark:text-emerald-400" />
+            <SummaryCard label="เฝ้าระวัง" value={summary.watch} accent="text-rose-500 dark:text-rose-400" />
+            <SummaryCard label="ต้นกล้า" value={summary.seedling} accent="text-sky-500 dark:text-sky-400" />
+          </div>
+        )}
+
+        {/* Zone Summary — ซ่อนในสวนมังคุด */}
+        {!isMango && (summary.zoneA > 0 || summary.zoneB > 0) && (
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl p-2 text-center">
+              <p className="text-[10px] text-violet-600 dark:text-violet-400">โซน A</p>
+              <p className="text-lg font-extrabold text-violet-700 dark:text-violet-300">{summary.zoneA}</p>
+            </div>
+            <div className="bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-xl p-2 text-center">
+              <p className="text-[10px] text-cyan-600 dark:text-cyan-400">โซน B</p>
+              <p className="text-lg font-extrabold text-cyan-700 dark:text-cyan-300">{summary.zoneB}</p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-center">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">ไม่มีโซน</p>
+              <p className="text-lg font-extrabold text-slate-600 dark:text-slate-300">{summary.zoneNone}</p>
+            </div>
+          </div>
+        )}
+
+        {!isMango && summary.hospital > 0 && (
           <div className="flex items-center gap-2 mb-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
             <span className="text-sm">🏥</span>
             <span className="text-xs font-bold text-red-700 dark:text-red-400">กำลังรักษา {summary.hospital} ต้น</span>
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 mb-3 text-xs">
-          {(Object.keys(STATUS_META) as Status[]).map((k) => (
-            <div key={k} className="flex items-center gap-1">
-              <span className={`inline-block w-3 h-3 rounded ${STATUS_META[k].bg} ${STATUS_META[k].bgDark}`}></span>
-              <span className="text-slate-600 dark:text-slate-400">{STATUS_META[k].icon} {STATUS_META[k].label}</span>
-            </div>
-          ))}
-          <span className="text-slate-400 dark:text-slate-500">|</span>
-          {(Object.keys(SEVERITY_BG) as Severity[]).map((k) => (
-            <div key={k} className="flex items-center gap-1">
-              <span className={`inline-block w-3 h-3 rounded ${SEVERITY_BG[k].bg} ${SEVERITY_BG[k].bgDark}`}></span>
-              <span className="text-slate-600 dark:text-slate-400">🏥 {SEVERITY_BG[k].label}</span>
-            </div>
-          ))}
+        {/* ── Mode Toggle ── */}
+        <div className={`grid ${isMango ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5 mb-3 bg-slate-100 dark:bg-slate-800 rounded-xl p-1`}>
+          <button
+            onClick={() => setMode('view')}
+            className={`flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold transition-all ${
+              effectiveMode === 'view'
+                ? 'bg-white dark:bg-slate-700 shadow text-slate-800 dark:text-white'
+                : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <Eye size={14} /> ดู
+          </button>
+          <button
+            onClick={() => setMode('edit-grid')}
+            className={`flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold transition-all ${
+              effectiveMode === 'edit-grid'
+                ? 'bg-amber-500 text-white shadow'
+                : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <Edit3 size={14} /> แก้ไขผัง
+          </button>
+          {!isMango && (
+            <button
+              onClick={() => setMode('edit-zone')}
+              className={`flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                effectiveMode === 'edit-zone'
+                  ? 'bg-violet-500 text-white shadow'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              <MapPin size={14} /> กำหนดโซน
+            </button>
+          )}
         </div>
 
-        {/* Grid */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-2 border border-slate-200 dark:border-slate-700">
-          {/* Column labels */}
-          <div
-            className="grid mb-0.5"
-            style={{ gridTemplateColumns: `20px repeat(${COLS}, 1fr)`, gap: '2px' }}
-          >
-            <div />
-            {Array.from({ length: COLS }, (_, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400 h-5"
-              >
-                C{i + 1}
+        {/* Edit Grid controls */}
+        {effectiveMode === 'edit-grid' && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-3 space-y-2">
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              👆 กดที่ cell เพื่อ <strong>เปิด/ปิด</strong> ต้น · ปุ่มด้านล่างเพื่อเพิ่ม/ลบแถว/คอลัมน์
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-2">
+                <p className="text-[10px] text-slate-500 mb-1 text-center">แถว (R) — {rows}</p>
+                <div className="flex gap-1.5">
+                  <button onClick={removeRow} disabled={saving || rows <= 1}
+                    className="flex-1 py-1.5 bg-rose-100 dark:bg-rose-900/40 hover:bg-rose-200 text-rose-600 dark:text-rose-400 rounded-lg disabled:opacity-50 flex items-center justify-center">
+                    <Minus size={14} />
+                  </button>
+                  <button onClick={addRow} disabled={saving || rows >= MAX_ROWS}
+                    className="flex-1 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 text-emerald-600 dark:text-emerald-400 rounded-lg disabled:opacity-50 flex items-center justify-center">
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-2">
+                <p className="text-[10px] text-slate-500 mb-1 text-center">คอลัมน์ (C) — {cols}</p>
+                <div className="flex gap-1.5">
+                  <button onClick={removeCol} disabled={saving || cols <= 1}
+                    className="flex-1 py-1.5 bg-rose-100 dark:bg-rose-900/40 hover:bg-rose-200 text-rose-600 dark:text-rose-400 rounded-lg disabled:opacity-50 flex items-center justify-center">
+                    <Minus size={14} />
+                  </button>
+                  <button onClick={addCol} disabled={saving || cols >= MAX_COLS}
+                    className="flex-1 py-1.5 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 text-emerald-600 dark:text-emerald-400 rounded-lg disabled:opacity-50 flex items-center justify-center">
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Zone controls — ซ่อนในสวนมังคุด */}
+        {!isMango && effectiveMode === 'edit-zone' && (
+          <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl p-3 mb-3 space-y-2">
+            <p className="text-xs text-violet-700 dark:text-violet-400">
+              👆 เลือกโซนด้านล่าง แล้วกดที่ต้นในผังเพื่อกำหนด/ยกเลิก
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button onClick={() => setZoneBrush('A')}
+                className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                  zoneBrush === 'A' ? 'bg-violet-500 text-white shadow ring-2 ring-violet-300' : 'bg-white dark:bg-slate-800 text-violet-600 dark:text-violet-400'
+                }`}>
+                โซน A
+              </button>
+              <button onClick={() => setZoneBrush('B')}
+                className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                  zoneBrush === 'B' ? 'bg-cyan-500 text-white shadow ring-2 ring-cyan-300' : 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400'
+                }`}>
+                โซน B
+              </button>
+              <button onClick={() => setZoneBrush(null)}
+                className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                  zoneBrush === null ? 'bg-slate-500 text-white shadow ring-2 ring-slate-300' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                }`}>
+                ลบโซน
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Legend — ซ่อนในสวนมังคุด */}
+        {!isMango && (
+          <div className="flex flex-wrap gap-2 mb-3 text-xs">
+            {(Object.keys(STATUS_META) as Status[]).map((k) => (
+              <div key={k} className="flex items-center gap-1">
+                <span className={`inline-block w-3 h-3 rounded ${STATUS_META[k].bg} ${STATUS_META[k].bgDark}`}></span>
+                <span className="text-slate-600 dark:text-slate-400">{STATUS_META[k].icon} {STATUS_META[k].label}</span>
               </div>
             ))}
+            <span className="text-slate-400 dark:text-slate-500">|</span>
+            <div className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded ring-2 ring-violet-500"></span>
+              <span className="text-slate-600 dark:text-slate-400">โซน A</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="inline-block w-3 h-3 rounded ring-2 ring-cyan-500"></span>
+              <span className="text-slate-600 dark:text-slate-400">โซน B</span>
+            </div>
           </div>
+        )}
 
-          {/* Rows */}
-          {Array.from({ length: ROWS }, (_, rIdx) => {
-            const row = rIdx + 1;
-            return (
-              <div
-                key={row}
-                className="grid mb-0.5"
-                style={{ gridTemplateColumns: `20px repeat(${COLS}, 1fr)`, gap: '2px' }}
-              >
-                {/* Row label */}
-                <div className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400">
-                  R{row}
+        {/* Grid */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-2 border border-slate-200 dark:border-slate-700 overflow-x-auto">
+          <div className="min-w-fit">
+            {/* Column labels */}
+            <div className="grid mb-0.5" style={{ gridTemplateColumns: `20px repeat(${cols}, minmax(40px, 1fr))`, gap: '2px' }}>
+              <div />
+              {Array.from({ length: cols }, (_, i) => (
+                <div key={i} className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400 h-5">
+                  C{i + 1}
                 </div>
-                {Array.from({ length: COLS }, (_, cIdx) => {
-                  const col = cIdx + 1;
-                  if (!hasTree(row, col)) {
-                    return (
-                      <div
-                        key={col}
-                        className="rounded-md bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700 aspect-square"
-                      />
-                    );
-                  }
-                  const t = treeMap.get(`${row},${col}`);
-                  // ── คำนวณสถานะที่ "ควรจะเป็น" จากประวัติการป่วยล่าสุด ──
-                  // ตรงกับ logic ใน openEdit: ประวัติล่าสุด = treating → watch / recovered → normal
-                  // ยกเว้น seedling (ต้นกล้า) — เก็บค่าเดิม
-                  const dbStatus: Status = (t?.status ?? 'normal') as Status;
-                  let effStatus: Status = dbStatus;
-                  if (t && dbStatus !== 'seedling') {
-                    const latest = latestRecordByTree.get(t.id);
-                    if (latest) {
-                      effStatus = latest.status === 'treating' ? 'watch' : 'normal';
-                    } else {
-                      effStatus = 'normal';
+              ))}
+            </div>
+
+            {/* Rows */}
+            {Array.from({ length: rows }, (_, rIdx) => {
+              const row = rIdx + 1;
+              return (
+                <div key={row} className="grid mb-0.5" style={{ gridTemplateColumns: `20px repeat(${cols}, minmax(40px, 1fr))`, gap: '2px' }}>
+                  <div className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400">
+                    R{row}
+                  </div>
+                  {Array.from({ length: cols }, (_, cIdx) => {
+                    const col = cIdx + 1;
+                    const isBlocked = !hasTreeAt(row, col);
+
+                    // Cell ปิด (ไม่มีต้น)
+                    if (isBlocked) {
+                      if (effectiveMode === 'edit-grid') {
+                        return (
+                          <button
+                            key={col}
+                            onClick={() => toggleCell(row, col)}
+                            className="rounded-md bg-slate-100 dark:bg-slate-900/50 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 hover:border-emerald-400 aspect-square flex items-center justify-center transition-all"
+                            title="กดเพื่อเปิดต้น"
+                          >
+                            <Plus size={14} className="text-slate-400" />
+                          </button>
+                        );
+                      }
+                      return (
+                        <div key={col}
+                          className="rounded-md bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700 aspect-square" />
+                      );
                     }
-                  }
-                  const meta = STATUS_META[effStatus];
-                  const treeNumber = t?.treeNumber ?? defaultTreeNumber(row, col);
-                  const variety = t?.variety ?? '—';
-                  const shortCode = treeNumber.length > 5 ? treeNumber.slice(0, 5) : treeNumber;
-                  const hospSeverity = t ? hospitalMap.get(t.id) : undefined;
-                  const cellBg = hospSeverity
-                    ? `${SEVERITY_BG[hospSeverity].bg} ${SEVERITY_BG[hospSeverity].bgDark}`
-                    : `${meta.bg} ${meta.bgDark}`;
-                  return (
-                    <button
-                      key={col}
-                      onClick={() => openEdit(row, col)}
-                      title={`${treeNumber} · ${variety} · ${hospSeverity ? `🏥 ${SEVERITY_BG[hospSeverity].label}` : meta.label}`}
-                      className={`relative rounded-md ${cellBg} border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform flex flex-col items-center justify-center aspect-square w-full`}
-                    >
-                      <span className="text-[10px] sm:text-sm leading-none">{meta.icon}</span>
-                      <span className="text-[6px] sm:text-[8px] font-bold text-slate-700 dark:text-slate-200 leading-tight mt-0.5 w-full text-center px-0.5 truncate">
-                        {shortCode}
-                      </span>
-                      {hospSeverity && (
-                        <span className="absolute -top-0.5 -right-0.5 text-[8px] leading-none">🏥</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
+
+                    // Cell มีต้น
+                    const t = treeMap.get(`${row},${col}`);
+                    const dbStatus: Status = (t?.status ?? 'normal') as Status;
+                    let effStatus: Status = dbStatus;
+                    if (t && dbStatus !== 'seedling') {
+                      const latest = latestRecordByTree.get(t.id);
+                      effStatus = latest?.status === 'treating' ? 'watch' : 'normal';
+                    }
+                    const meta = STATUS_META[effStatus];
+                    const treeNumber = t?.treeNumber ?? defaultTreeNumber(orchard?.name, row, col);
+                    const variety = t?.variety ?? '—';
+                    const shortCode = treeNumber.length > 5 ? treeNumber.slice(0, 5) : treeNumber;
+                    const hospSeverity = !isMango && t ? hospitalMap.get(t.id) : undefined;
+                    // สวนมังคุด: ใช้พื้นม่วงอ่อนเรียบๆ ไม่สนสถานะ
+                    const cellBg = isMango
+                      ? 'bg-purple-100 dark:bg-purple-900/30'
+                      : hospSeverity
+                        ? `${SEVERITY_BG[hospSeverity].bg} ${SEVERITY_BG[hospSeverity].bgDark}`
+                        : `${meta.bg} ${meta.bgDark}`;
+                    const zone = isMango ? null : t?.zone;
+                    const zoneRing = zone === 'A' || zone === 'B' ? ZONE_RING[zone] : '';
+                    // ไอคอนใน cell — สวนมังคุดใช้ emoji ของสวน
+                    const cellIcon = isMango ? (orchard?.icon || '🍇') : meta.icon;
+
+                    return (
+                      <button
+                        key={col}
+                        onClick={() => {
+                          if (effectiveMode === 'edit-grid') toggleCell(row, col);
+                          else if (effectiveMode === 'edit-zone') applyZone(row, col);
+                          else openEdit(row, col);
+                        }}
+                        title={isMango ? treeNumber : `${treeNumber} · ${variety}${zone ? ` · โซน ${zone}` : ''}`}
+                        className={`relative rounded-md ${cellBg} ${zoneRing} border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform flex flex-col items-center justify-center aspect-square w-full`}
+                      >
+                        {effectiveMode === 'edit-grid' ? (
+                          <Minus size={16} className="text-slate-700 dark:text-slate-200" />
+                        ) : (
+                          <>
+                            <span className="text-[10px] sm:text-sm leading-none">{cellIcon}</span>
+                            <span className="text-[6px] sm:text-[8px] font-bold text-slate-700 dark:text-slate-200 leading-tight mt-0.5 w-full text-center px-0.5 truncate">
+                              {shortCode}
+                            </span>
+                          </>
+                        )}
+                        {/* Zone badge มุมซ้ายบน — ซ่อนในสวนมังคุด */}
+                        {!isMango && (zone === 'A' || zone === 'B') && (
+                          <span className={`absolute -top-1 -left-1 ${ZONE_BADGE[zone]} text-[7px] font-extrabold rounded-full w-3.5 h-3.5 flex items-center justify-center shadow`}>
+                            {zone}
+                          </span>
+                        )}
+                        {!isMango && hospSeverity && effectiveMode !== 'edit-grid' && (
+                          <span className="absolute -top-0.5 -right-0.5 text-[8px] leading-none">🏥</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal แก้ต้น */}
       {editing && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={closeModal}
-        >
-          <div
-            className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-200 dark:border-slate-700"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={closeModal}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-800 dark:text-white">
                 ข้อมูลต้น R{editing.row}C{editing.col}
               </h2>
-              <button
-                onClick={closeModal}
-                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500"
-              >
+              <button onClick={closeModal} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
                 <X size={20} />
               </button>
             </div>
 
             <div className="space-y-3">
-              {/* รหัสต้น */}
               <div>
                 <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">
                   รหัสต้น <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  maxLength={20}
-                  value={form.treeNumber}
+                <input type="text" maxLength={20} value={form.treeNumber}
                   onChange={(e) => setForm({ ...form, treeNumber: e.target.value })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white"
-                  placeholder="เช่น T-001, A0101"
-                />
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white"
+                  placeholder="เช่น T-001" />
               </div>
 
-              {/* สถานะสุขภาพ */}
-              <div>
-                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">
-                  สถานะสุขภาพ
-                </label>
-                <select
-                  value={form.status}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === 'normal' || v === 'watch' || v === 'seedling') {
-                      setForm({ ...form, status: v });
-                    }
-                  }}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white"
-                >
-                  <option value="normal">🌳 ปกติ</option>
-                  <option value="watch">🌲 เฝ้าระวัง</option>
-                  <option value="seedling">🌴 ต้นกล้า</option>
-                </select>
-              </div>
+              {!isMango && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">สถานะสุขภาพ</label>
+                  <select value={form.status}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === 'normal' || v === 'watch' || v === 'seedling') setForm({ ...form, status: v });
+                    }}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white">
+                    <option value="normal">🌳 ปกติ</option>
+                    <option value="watch">🌲 เฝ้าระวัง</option>
+                    <option value="seedling">🌴 ต้นกล้า</option>
+                  </select>
+                </div>
+              )}
 
-              {/* พันธุ์ */}
-              <div>
-                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">
-                  พันธุ์
-                </label>
-                <select
-                  value={form.variety}
-                  onChange={(e) => setForm({ ...form, variety: e.target.value })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white"
-                >
-                  {VARIETIES.map((v) => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-              </div>
+              {/* โซน — ซ่อนในสวนมังคุด */}
+              {!isMango && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">โซน</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button type="button" onClick={() => setForm({ ...form, zone: null })}
+                      className={`py-2 rounded-lg text-sm font-bold transition-all ${
+                        !form.zone ? 'bg-slate-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                      }`}>
+                      ไม่ระบุ
+                    </button>
+                    <button type="button" onClick={() => setForm({ ...form, zone: 'A' })}
+                      className={`py-2 rounded-lg text-sm font-bold transition-all ${
+                        form.zone === 'A' ? 'bg-violet-500 text-white' : 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
+                      }`}>
+                      โซน A
+                    </button>
+                    <button type="button" onClick={() => setForm({ ...form, zone: 'B' })}
+                      className={`py-2 rounded-lg text-sm font-bold transition-all ${
+                        form.zone === 'B' ? 'bg-cyan-500 text-white' : 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400'
+                      }`}>
+                      โซน B
+                    </button>
+                  </div>
+                </div>
+              )}
 
-              {/* อายุ */}
+              {/* พันธุ์ — ซ่อนในสวนมังคุด */}
+              {!isMango && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">พันธุ์</label>
+                  <select value={form.variety}
+                    onChange={(e) => setForm({ ...form, variety: e.target.value })}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white">
+                    {getVarietiesFor(orchard?.name).map((v) => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">
-                  อายุต้นทุเรียน (ปี)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.age || ''}
+                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">อายุต้น (ปี)</label>
+                <input type="number" min={0} value={form.age || ''}
                   onChange={(e) => setForm({ ...form, age: Number(e.target.value) })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white"
-                  placeholder="0"
-                />
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white"
+                  placeholder="0" />
               </div>
 
-              {/* หมายเหตุ */}
               <div>
-                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">
-                  หมายเหตุ
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.note}
+                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">หมายเหตุ</label>
+                <textarea rows={3} value={form.note}
                   onChange={(e) => setForm({ ...form, note: e.target.value })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-none rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white resize-none"
-                  placeholder="พิมพ์หมายเหตุ..."
-                />
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white resize-none"
+                  placeholder="พิมพ์หมายเหตุ..." />
               </div>
 
               {formError && (
@@ -597,8 +875,8 @@ export default function FarmMapClient() {
               )}
 
               <div className="space-y-2 pt-2">
-                {/* ปุ่มห้องพยาบาล — เปลี่ยนตามว่ามีบันทึก treating ค้างอยู่ไหม */}
-                {(() => {
+                {/* ปุ่มห้องพยาบาล — ซ่อนในสวนมังคุด */}
+                {!isMango && (() => {
                   const existingTree = editing ? treeMap.get(`${editing.row},${editing.col}`) : null;
                   const isActivelySick = existingTree ? treeIdsActivelySick.has(existingTree.id) : false;
                   return (
@@ -607,68 +885,56 @@ export default function FarmMapClient() {
                         if (existingTree) {
                           closeModal();
                           if (isActivelySick) {
-                            // กำลังรักษาอยู่ → ไปหน้าประวัติของต้นนั้น (filter + preselect)
                             router.push(`/orchard/hospital?id=${orchardId}&viewTreeId=${existingTree.id}&treeId=${existingTree.id}`);
                           } else {
-                            // หายแล้ว/ยังไม่เคยป่วย → เปิดฟอร์มบันทึกใหม่
                             router.push(`/orchard/hospital?id=${orchardId}&treeId=${existingTree.id}`);
                           }
                         } else if (editing) {
-                          // ต้นยังไม่มีข้อมูล → ตรวจ dup แล้วสร้าง แล้ว navigate
                           setSaving(true);
                           try {
-                            const tn = form.treeNumber.trim() || defaultTreeNumber(editing.row, editing.col);
+                            const tn = form.treeNumber.trim() || defaultTreeNumber(orchard?.name, editing.row, editing.col);
                             const dup = trees.find(t => t.treeNumber === tn);
-                            if (dup) {
-                              alert(`รหัสต้น "${tn}" ซ้ำกับต้นที่ R${dup.row}C${dup.col}`);
-                              setSaving(false);
-                              return;
-                            }
+                            if (dup) { alert(`รหัสต้น "${tn}" ซ้ำ`); setSaving(false); return; }
                             const newId = await addTreeProfile({
-                              orchardId,
-                              row: editing.row,
-                              col: editing.col,
-                              treeNumber: tn,
-                              status: 'watch',
-                              variety: form.variety,
-                              age: Number(form.age) || 0,
-                              note: form.note,
-                              createdAt: Date.now(),
-                              updatedAt: Date.now(),
+                              orchardId, row: editing.row, col: editing.col,
+                              treeNumber: tn, status: 'watch',
+                              variety: form.variety, age: Number(form.age) || 0,
+                              zone: form.zone ?? null, note: form.note,
+                              createdAt: Date.now(), updatedAt: Date.now(),
                             });
                             closeModal();
                             router.push(`/orchard/hospital?id=${orchardId}&treeId=${newId}`);
-                          } catch {
-                            alert('เกิดข้อผิดพลาด');
-                          } finally {
-                            setSaving(false);
-                          }
+                          } catch { alert('เกิดข้อผิดพลาด'); }
+                          finally { setSaving(false); }
                         }
                       }}
                       disabled={saving}
-                      className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border disabled:opacity-50 ${
+                      className={`w-full py-2.5 rounded-xl font-bold text-sm border disabled:opacity-50 ${
                         isActivelySick
-                          ? 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
-                          : 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
+                          ? 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                          : 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
                       }`}
                     >
                       {isActivelySick ? '📋 ประวัติการป่วย' : '🏥 ส่งห้องพยาบาล'}
                     </button>
                   );
                 })()}
+
+                {/* ปุ่มลบต้น (แสดงเฉพาะเมื่อมีต้นอยู่แล้ว) */}
+                {editing && treeMap.get(`${editing.row},${editing.col}`) && (
+                  <button onClick={handleDeleteTree} disabled={saving}
+                    className="w-full py-2 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-50">
+                    <Trash2 size={14} /> ลบต้นนี้
+                  </button>
+                )}
+
                 <div className="flex gap-2">
-                  <button
-                    onClick={closeModal}
-                    disabled={saving}
-                    className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold transition-all disabled:opacity-50"
-                  >
+                  <button onClick={closeModal} disabled={saving}
+                    className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold disabled:opacity-50">
                     ยกเลิก
                   </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-all disabled:opacity-50"
-                  >
+                  <button onClick={handleSave} disabled={saving}
+                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold disabled:opacity-50">
                     {saving ? 'กำลังบันทึก...' : 'บันทึก'}
                   </button>
                 </div>

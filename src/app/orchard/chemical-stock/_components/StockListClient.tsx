@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   getOrchards,
   MEDICINE_UNIT_LABEL,
+  isDurianFarm,
   type Orchard,
   type MedicineCategory,
   type MedicineUnit,
@@ -541,7 +542,7 @@ export default function StockListClient({
         orchardName={orchard.name}
         orchardColor={orchard.color}
         orchardId={orchardId}
-        isDurianBackyard={orchard.name === 'ทุเรียนหลังบ้าน'}
+        isDurianBackyard={isDurianFarm(orchard.name)}
         title={title}
         Icon={Icon}
       />

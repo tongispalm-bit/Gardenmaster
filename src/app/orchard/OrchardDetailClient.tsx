@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '@/lib/useTheme';
-import { getOrchards, type Orchard } from '@/lib/firebase';
+import { getOrchards, isDurianFarm, type Orchard } from '@/lib/firebase';
 import {
   Home,
   LeafIcon,
@@ -76,10 +76,12 @@ export default function OrchardDetailClient() {
     loadData();
   }, [orchardId]);
 
-  // Redirect ไปหน้าผังสวนทันทีถ้าเป็นสวนทุเรียนหลังบ้าน
+  // Redirect ไปหน้าผังสวนทันทีถ้าเป็นสวนทุเรียน
+  // สวนมังคุด → ไปหน้าการดูแลแทน (ไม่มีผังสวน)
   useEffect(() => {
-    if (orchard && orchard.name === 'ทุเรียนหลังบ้าน') {
-      router.replace(`/orchard/farm-map?id=${orchardId}`);
+    if (orchard && isDurianFarm(orchard.name)) {
+      const target = orchard.name === 'สวนมังคุด' ? 'care' : 'farm-map';
+      router.replace(`/orchard/${target}?id=${orchardId}`);
     }
   }, [orchard, orchardId, router]);
 
@@ -95,7 +97,7 @@ export default function OrchardDetailClient() {
     }
   };
 
-  if (!orchard || loading || orchard.name === 'ทุเรียนหลังบ้าน') {
+  if (!orchard || loading || isDurianFarm(orchard.name)) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>

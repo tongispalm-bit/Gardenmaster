@@ -6,6 +6,7 @@ import {
   getOrchards, addSprayRecord, getSprayRecords, deleteSprayRecord,
   getMedicineItems, getNutrientItems, deductFromStock,
   SPRAY_GROUP_LABEL, MEDICINE_UNIT_LABEL,
+  isDurianFarm,
   type Orchard, type SprayRecord, type SprayMedicine, type SprayMedicineGroup,
   type MedicineItemRecord, type NutrientItemRecord,
 } from '@/lib/firebase';
@@ -45,6 +46,9 @@ export default function SprayClient() {
   const [stocks, setStocks] = useState<StockOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // popup state
+  const [showAddModal, setShowAddModal] = useState(false);
 
   // ปฏิทินประวัติ
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -247,6 +251,7 @@ export default function SprayClient() {
 
       setForm({ ...emptyForm, medicines: { insecticide: [], fungicide: [], hormone: [], fertilizer: [] } });
       await loadData();
+      setShowAddModal(false);
     } catch { alert('บันทึกไม่สำเร็จ'); }
     finally { setSaving(false); }
   };
@@ -255,124 +260,17 @@ export default function SprayClient() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8">
-      <SubPageHeader orchardName={orchard.name} orchardColor={orchard.color} orchardId={orchardId} isDurianBackyard={orchard.name === 'ทุเรียนหลังบ้าน'} title="พ่นยา" Icon={Bug} />
+      <SubPageHeader orchardName={orchard.name} orchardColor={orchard.color} orchardId={orchardId} isDurianBackyard={isDurianFarm(orchard.name)} title="พ่นยา" Icon={Bug} />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
 
-        {/* ── ฟอร์มบันทึก ── */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
-          <h2 className="font-bold text-sm text-orange-700 dark:text-orange-400">บันทึกการพ่นยา</h2>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่</label>
-              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
-                className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-orange-500 text-sm text-slate-800 dark:text-white" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อโรค / แมลง</label>
-              <input type="text" value={form.pestDisease} onChange={e => setForm({ ...form, pestDisease: e.target.value })}
-                placeholder="เช่น ราน้ำค้าง, เพลี้ย"
-                className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-orange-500 text-sm text-slate-800 dark:text-white" />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วัตถุประสงค์ <span className="text-red-500">*</span></label>
-            <input type="text" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })}
-              placeholder="เช่น ป้องกันราน้ำค้าง + เพิ่มธาตุอาหาร"
-              className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-orange-500 text-sm text-slate-800 dark:text-white" />
-          </div>
-
-          {/* ── 4 กลุ่มยา ── */}
-          {GROUP_META.map(meta => {
-            const Icon = meta.Icon;
-            const list = form.medicines[meta.id];
-            const stockOptions = stocksByGroup[meta.id];
-            return (
-              <div key={meta.id} className={`rounded-xl border bg-${meta.color}-50/50 dark:bg-${meta.color}-900/10 border-${meta.color}-200 dark:border-${meta.color}-800 p-3 space-y-2`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center bg-${meta.color}-100 dark:bg-${meta.color}-900/30 text-${meta.color}-600 dark:text-${meta.color}-400`}>
-                      <Icon size={14} />
-                    </div>
-                    <span className={`text-xs font-bold text-${meta.color}-700 dark:text-${meta.color}-400`}>
-                      รายการยาที่ใช้ ({meta.label})
-                    </span>
-                  </div>
-                  <button onClick={() => addMed(meta.id)} className={`text-xs text-${meta.color}-600 dark:text-${meta.color}-400 font-bold flex items-center gap-1`}>
-                    <Plus size={12} /> เพิ่ม
-                  </button>
-                </div>
-
-                {list.length === 0 && (
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center py-1">— ยังไม่มี —</p>
-                )}
-
-                {list.map((m, i) => (
-                  <div key={i} className="bg-white dark:bg-slate-800 rounded-lg p-2 space-y-1.5 border border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-1.5">
-                      {/* dropdown ชื่อยา */}
-                      <select
-                        value={m.stockId ?? ''}
-                        onChange={e => handleSelectStock(meta.id, i, e.target.value)}
-                        className={`flex-1 min-w-0 p-2 bg-slate-50 dark:bg-slate-700 rounded-lg outline-none focus:ring-2 ring-${meta.color}-500 text-xs text-slate-800 dark:text-white`}
-                      >
-                        <option value="">-- เลือกชื่อยา --</option>
-                        {stockOptions.length === 0 ? (
-                          <option disabled>(ไม่มีในคลัง — เพิ่มก่อนใน {meta.label})</option>
-                        ) : (
-                          stockOptions.map(s => (
-                            <option key={s.id} value={s.id}>
-                              {s.name} (เหลือ {s.remain} {MEDICINE_UNIT_LABEL[s.unit as keyof typeof MEDICINE_UNIT_LABEL] ?? s.unit})
-                            </option>
-                          ))
-                        )}
-                      </select>
-                      <button onClick={() => removeMed(meta.id, i)} className="text-slate-400 hover:text-red-500 flex-shrink-0">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        step="0.01"
-                        value={m.amount}
-                        onChange={e => updateMed(meta.id, i, { amount: e.target.value })}
-                        placeholder="ปริมาณที่ใช้"
-                        className={`p-2 bg-slate-50 dark:bg-slate-700 rounded-lg outline-none focus:ring-2 ring-${meta.color}-500 text-xs text-slate-800 dark:text-white`}
-                      />
-                      <input
-                        type="text"
-                        value={m.unit ? (MEDICINE_UNIT_LABEL[m.unit as keyof typeof MEDICINE_UNIT_LABEL] ?? m.unit) : ''}
-                        readOnly
-                        placeholder="หน่วย"
-                        className="p-2 bg-slate-100 dark:bg-slate-900 rounded-lg outline-none text-xs text-slate-600 dark:text-slate-400"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">หมายเหตุ</label>
-            <input type="text" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })}
-              placeholder="หมายเหตุเพิ่มเติม..."
-              className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-orange-500 text-sm text-slate-800 dark:text-white" />
-          </div>
-
-          <button onClick={handleAdd} disabled={saving || !form.purpose}
-            className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm">
-            {saving ? 'กำลังบันทึก...' : 'บันทึกการพ่นยา'}
-          </button>
-          <p className="text-[10px] text-slate-400 text-center">
-            * ระบบจะหักปริมาณจากคลังสารเคมีอัตโนมัติเมื่อบันทึก
-          </p>
-        </div>
+        {/* ── ปุ่มเปิด popup บันทึกการพ่นยา ── */}
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 shadow-md"
+        >
+          <Plus size={18} /> บันทึกการพ่นยา
+        </button>
 
         {/* ── ประวัติการพ่นยา (ปฏิทิน) ── */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -455,6 +353,133 @@ export default function SprayClient() {
           </div>
         </div>
       </div>
+
+      {/* ── Popup: บันทึกการพ่นยา ── */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowAddModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-orange-50 dark:bg-orange-900/20 rounded-t-2xl">
+              <h3 className="font-bold text-base text-orange-700 dark:text-orange-400 flex items-center gap-2">
+                <Bug size={18} /> บันทึกการพ่นยา
+              </h3>
+              <button onClick={() => setShowAddModal(false)} className="p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-500">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่</label>
+                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-orange-500 text-sm text-slate-800 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อโรค / แมลง</label>
+                  <input type="text" value={form.pestDisease} onChange={e => setForm({ ...form, pestDisease: e.target.value })}
+                    placeholder="เช่น ราน้ำค้าง, เพลี้ย"
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-orange-500 text-sm text-slate-800 dark:text-white" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วัตถุประสงค์ <span className="text-red-500">*</span></label>
+                <input type="text" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })}
+                  placeholder="เช่น ป้องกันราน้ำค้าง + เพิ่มธาตุอาหาร"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-orange-500 text-sm text-slate-800 dark:text-white" />
+              </div>
+
+              {GROUP_META.map(meta => {
+                const Icon = meta.Icon;
+                const list = form.medicines[meta.id];
+                const stockOptions = stocksByGroup[meta.id];
+                return (
+                  <div key={meta.id} className={`rounded-xl border bg-${meta.color}-50/50 dark:bg-${meta.color}-900/10 border-${meta.color}-200 dark:border-${meta.color}-800 p-3 space-y-2`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center bg-${meta.color}-100 dark:bg-${meta.color}-900/30 text-${meta.color}-600 dark:text-${meta.color}-400`}>
+                          <Icon size={14} />
+                        </div>
+                        <span className={`text-xs font-bold text-${meta.color}-700 dark:text-${meta.color}-400`}>
+                          รายการยาที่ใช้ ({meta.label})
+                        </span>
+                      </div>
+                      <button onClick={() => addMed(meta.id)} className={`text-xs text-${meta.color}-600 dark:text-${meta.color}-400 font-bold flex items-center gap-1`}>
+                        <Plus size={12} /> เพิ่ม
+                      </button>
+                    </div>
+
+                    {list.length === 0 && (
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center py-1">— ยังไม่มี —</p>
+                    )}
+
+                    {list.map((m, i) => (
+                      <div key={i} className="bg-white dark:bg-slate-800 rounded-lg p-2 space-y-1.5 border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center gap-1.5">
+                          <select value={m.stockId ?? ''}
+                            onChange={e => handleSelectStock(meta.id, i, e.target.value)}
+                            className={`flex-1 min-w-0 p-2 bg-slate-50 dark:bg-slate-700 rounded-lg outline-none focus:ring-2 ring-${meta.color}-500 text-xs text-slate-800 dark:text-white`}>
+                            <option value="">-- เลือกชื่อยา --</option>
+                            {stockOptions.length === 0 ? (
+                              <option disabled>(ไม่มีในคลัง — เพิ่มก่อนใน {meta.label})</option>
+                            ) : (
+                              stockOptions.map(s => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name} (เหลือ {s.remain} {MEDICINE_UNIT_LABEL[s.unit as keyof typeof MEDICINE_UNIT_LABEL] ?? s.unit})
+                                </option>
+                              ))
+                            )}
+                          </select>
+                          <button onClick={() => removeMed(meta.id, i)} className="text-slate-400 hover:text-red-500 flex-shrink-0">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <input type="number" inputMode="decimal" min="0" step="0.01"
+                            value={m.amount}
+                            onChange={e => updateMed(meta.id, i, { amount: e.target.value })}
+                            placeholder="ปริมาณที่ใช้"
+                            className={`p-2 bg-slate-50 dark:bg-slate-700 rounded-lg outline-none focus:ring-2 ring-${meta.color}-500 text-xs text-slate-800 dark:text-white`} />
+                          <input type="text"
+                            value={m.unit ? (MEDICINE_UNIT_LABEL[m.unit as keyof typeof MEDICINE_UNIT_LABEL] ?? m.unit) : ''}
+                            readOnly placeholder="หน่วย"
+                            className="p-2 bg-slate-100 dark:bg-slate-900 rounded-lg outline-none text-xs text-slate-600 dark:text-slate-400" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">หมายเหตุ</label>
+                <input type="text" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })}
+                  placeholder="หมายเหตุเพิ่มเติม..."
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-orange-500 text-sm text-slate-800 dark:text-white" />
+              </div>
+
+              <p className="text-[10px] text-slate-400 text-center">
+                * ระบบจะหักปริมาณจากคลังสารเคมีอัตโนมัติเมื่อบันทึก
+              </p>
+            </div>
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+              <button onClick={() => setShowAddModal(false)} disabled={saving}
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm disabled:opacity-50">
+                ยกเลิก
+              </button>
+              <button onClick={handleAdd} disabled={saving || !form.purpose}
+                className="flex-1 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm">
+                {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Popup ประวัติการพ่นยาของวันที่เลือก ── */}
       {selectedDate && (

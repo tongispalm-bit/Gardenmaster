@@ -10,6 +10,7 @@ import {
   updateHospitalRecord,
   deleteHospitalRecord,
   updateTreeProfile,
+  isDurianFarm,
   type Orchard,
   type TreeProfile,
   type HospitalRecord,
@@ -319,7 +320,7 @@ export default function HospitalClient() {
     );
   }
 
-  const isDurianBackyard = orchard.name === 'ทุเรียนหลังบ้าน';
+  const isDurianBackyard = isDurianFarm(orchard.name);
 
   // ถ้ามี viewTreeId → filter เฉพาะต้นนั้น
   const filteredRecords = viewTreeId

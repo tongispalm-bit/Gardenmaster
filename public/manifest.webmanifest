@@ -1,0 +1,87 @@
+{
+  "name": "Garden Master — แกนมาสเตอร์",
+  "short_name": "Garden Master",
+  "description": "เว็บแอปจัดการสวนทุเรียน/มังคุด",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#27ae60",
+  "lang": "th",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "บันทึกการรดน้ำ",
+      "short_name": "รดน้ำ",
+      "description": "เปิดหน้ารดน้ำ",
+      "url": "/orchard/care/water/?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-water.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "บันทึกการใส่ปุ๋ย",
+      "short_name": "ใส่ปุ๋ย",
+      "description": "เปิดหน้าใส่ปุ๋ย",
+      "url": "/orchard/care/fertilize/?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-fertilize.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "บันทึกการพ่นยา",
+      "short_name": "พ่นยา",
+      "description": "เปิดหน้าพ่นยา",
+      "url": "/orchard/care/spray/?source=shortcut",
+      "icons": [{ "src": "/icons/shortcut-spray.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "สรุปรายจ่าย",
+      "short_name": "สรุปรายจ่าย",
+      "description": "ดูสรุปรายจ่ายของสวน",
+      "url": "/?source=shortcut-expense",
+      "icons": [{ "src": "/icons/shortcut-expense.png", "sizes": "96x96", "type": "image/png" }]
+    }
+  ],
+  "share_target": {
+    "action": "/share/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "prefer_related_applications": false
+}

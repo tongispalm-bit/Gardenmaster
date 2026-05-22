@@ -21,6 +21,43 @@ export type Orchard = {
   createdAt: number;
 };
 
+/** สวนที่ใช้ flow แบบมีผังสวน + sub-menu tabs (ทุเรียน + มังคุด) */
+export const FARM_MAP_ORCHARDS = ['ทุเรียนหลังบ้าน', 'ทุเรียนหมื่นซ่อง', 'สวนมังคุด'] as const;
+
+/** เช็คว่าสวนนี้ใช้ flow ผังสวน + tabs หรือไม่ */
+export function hasFarmMap(orchardName: string | undefined | null): boolean {
+  if (!orchardName) return false;
+  return (FARM_MAP_ORCHARDS as readonly string[]).includes(orchardName);
+}
+
+// ── alias ของเดิม (deprecated แต่เก็บไว้เพื่อ backward compat) ──
+export const DURIAN_FARM_NAMES = FARM_MAP_ORCHARDS;
+export const isDurianFarm = hasFarmMap;
+
+/** เช็คว่าเป็นสวนมังคุด — ใช้ flow ผังสวนแบบเรียบง่าย (ไม่มีโซน/พยาบาล/พันธุ์) */
+export function isMangosteenFarm(orchardName: string | undefined | null): boolean {
+  return orchardName === 'สวนมังคุด';
+}
+
+/** พันธุ์ของพืชในแต่ละสวน — ใช้ในผังสวน */
+const DURIAN_VARIETIES = [
+  'หมอนทอง','ชะนี','กระดุม','พวงมณี','ก้านยาว','มูซานคิง','โอฉี','นวลทองจันทร์',
+];
+const MANGOSTEEN_VARIETIES = [
+  'มังคุดพื้นเมือง','มังคุดสายพันธุ์ดี','มังคุดเมขลา','มังคุดสีทอง','มังคุดเขาคิชฌกูฎ',
+];
+
+export function getVarietiesFor(orchardName: string | undefined | null): string[] {
+  if (orchardName === 'สวนมังคุด') return MANGOSTEEN_VARIETIES;
+  return DURIAN_VARIETIES;
+}
+
+/** Tree code prefix — B = ทุเรียน, M = มังคุด */
+export function getTreeCodePrefix(orchardName: string | undefined | null): string {
+  if (orchardName === 'สวนมังคุด') return 'M';
+  return 'B';
+}
+
 export type CareRecord = {
   id: string;
   orchardId: string;
@@ -51,6 +88,8 @@ export type TreeProfile = {
   variety: string;
   age: number;
   status: 'normal' | 'watch' | 'seedling';
+  /** โซน A หรือ B — ใช้แยกกลุ่มสำหรับการรดน้ำ */
+  zone?: 'A' | 'B' | null;
   note: string;
   createdAt: number;
   updatedAt: number;
@@ -132,6 +171,75 @@ export async function updateTreeProfile(id: string, data: Partial<Omit<TreeProfi
 
 export async function deleteTreeProfile(id: string) {
   await deleteDoc(doc(db, 'treeProfiles', id));
+}
+
+// ── Farm Map Config (ขนาดผังและ cell ที่ไม่มีต้น) ──────────────────
+export type FarmMapConfig = {
+  id: string;
+  orchardId: string;
+  rows: number;
+  cols: number;
+  /** "row,col" ของ cell ที่ "ไม่มี" ต้น (default ทุก cell มีต้น) */
+  blockedCells: string[];
+  updatedAt: number;
+};
+
+export async function getFarmMapConfig(orchardId: string): Promise<FarmMapConfig | null> {
+  const snapshot = await getDocs(collection(db, 'farmMapConfigs'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as FarmMapConfig[];
+  return all.find(c => c.orchardId === orchardId) || null;
+}
+
+export async function saveFarmMapConfig(
+  orchardId: string,
+  data: { rows: number; cols: number; blockedCells: string[] }
+): Promise<string> {
+  const existing = await getFarmMapConfig(orchardId);
+  if (existing) {
+    await updateDoc(doc(db, 'farmMapConfigs', existing.id), {
+      ...data,
+      updatedAt: Date.now(),
+    });
+    return existing.id;
+  }
+  const docRef = await addDoc(collection(db, 'farmMapConfigs'), {
+    orchardId,
+    ...data,
+    updatedAt: Date.now(),
+  });
+  return docRef.id;
+}
+
+// ── Orchard Stats (ใช้กับสวนที่ไม่มีผังสวน เช่น สวนมังคุด — กรอกจำนวนต้นเอง) ──
+export type OrchardStats = {
+  id: string;
+  orchardId: string;
+  /** จำนวนต้น (กรอกเอง) */
+  treeCount: number;
+  updatedAt: number;
+};
+
+export async function getOrchardStats(orchardId: string): Promise<OrchardStats | null> {
+  const snapshot = await getDocs(collection(db, 'orchardStats'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as OrchardStats[];
+  return all.find(s => s.orchardId === orchardId) || null;
+}
+
+export async function saveOrchardStats(orchardId: string, treeCount: number): Promise<string> {
+  const existing = await getOrchardStats(orchardId);
+  if (existing) {
+    await updateDoc(doc(db, 'orchardStats', existing.id), {
+      treeCount,
+      updatedAt: Date.now(),
+    });
+    return existing.id;
+  }
+  const docRef = await addDoc(collection(db, 'orchardStats'), {
+    orchardId,
+    treeCount,
+    updatedAt: Date.now(),
+  });
+  return docRef.id;
 }
 
 // ── User Authentication ─────────────────────────────────────
@@ -263,7 +371,7 @@ export async function ensureAdminSeeded(): Promise<void> {
 }
 
 // ── Sale Records (การซื้อขาย) ───────────────────────────────
-export type DurianGrade = 'AB' | 'C' | 'D' | 'ตกไซร์' | 'อินโด' | 'จัมโบ้' | 'เข้าห้องเย็น' | 'เอาไว้เอง';
+export type DurianGrade = 'เบอร์หัว' | 'ดอกดำ' | 'เบอร์รวม';
 
 export type SaleRecord = {
   id: string;
@@ -368,21 +476,48 @@ export type WaterSetting = {
 };
 
 export type DurianGrowthStage =
-  | 'post_harvest'
-  | 'stress'
-  | 'flowering'
-  | 'full_bloom'
-  | 'tail'
-  | 'fruit';
+  | 'post_harvest'      // หลังเก็บเกี่ยว
+  | 'accumulate'        // ระยะสะสมอาหาร
+  | 'make_flower'       // ระยะทำดอก
+  | 'flowering'         // ระยะออกดอก
+  | 'fruit_setting'     // ระยะเป็นขึ้นลูก
+  | 'harvest';          // ระยะเก็บเกี่ยว
 
 export const DURIAN_GROWTH_STAGE_LABEL: Record<DurianGrowthStage, string> = {
-  post_harvest: 'ระยะหลังเก็บเกี่ยว',
-  stress:       'ระยะกักโศก',
-  flowering:    'ระยะออกดอก',
-  full_bloom:   'ระยะดอกบาน',
-  tail:         'ระยะหางแย้',
-  fruit:        'ระยะลูก',
+  post_harvest:  'หลังเก็บเกี่ยว',
+  accumulate:    'ระยะสะสมอาหาร',
+  make_flower:   'ระยะทำดอก',
+  flowering:     'ระยะออกดอก',
+  fruit_setting: 'ระยะเป็นขึ้นลูก',
+  harvest:       'ระยะเก็บเกี่ยว',
 };
+
+// ── ระยะกักโศก (Stress Period) — ช่วงวันที่งดน้ำเพื่อกระตุ้นออกดอก ──
+export type StressPeriod = {
+  id: string;
+  orchardId: string;
+  /** วันที่เริ่มกักโศก YYYY-MM-DD */
+  startDate: string;
+  /** วันที่สิ้นสุดกักโศก YYYY-MM-DD */
+  endDate: string;
+  note?: string;
+  createdAt: number;
+};
+
+export async function addStressPeriod(record: Omit<StressPeriod, 'id'>) {
+  const docRef = await addDoc(collection(db, 'stressPeriods'), record);
+  return docRef.id;
+}
+
+export async function getStressPeriods(orchardId: string): Promise<StressPeriod[]> {
+  const snapshot = await getDocs(collection(db, 'stressPeriods'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as StressPeriod[];
+  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function deleteStressPeriod(id: string) {
+  await deleteDoc(doc(db, 'stressPeriods', id));
+}
 
 export type WaterRecord = {
   id: string;
@@ -391,6 +526,8 @@ export type WaterRecord = {
   minutes: number;
   liters: number;
   growthStage: DurianGrowthStage;
+  /** โซนที่รด — 'all' = ทั้งสวน, 'A'/'B' = เฉพาะโซน */
+  zone?: 'all' | 'A' | 'B';
   createdAt: number;
 };
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getOrchards, type Orchard } from '@/lib/firebase';
+import { getOrchards, isDurianFarm, type Orchard } from '@/lib/firebase';
 import { AlertCircle, type LucideIcon } from 'lucide-react';
 import SubMenuTabs from './SubMenuTabs';
 import SubPageHeader from './SubPageHeader';
@@ -51,7 +51,7 @@ export default function ComingSoonClient({ tabId, title, Icon, accentClass }: Pr
     );
   }
 
-  const isDurianBackyard = orchard.name === 'ทุเรียนหลังบ้าน';
+  const isDurianBackyard = isDurianFarm(orchard.name);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300">

@@ -8,6 +8,7 @@ import {
   addDurianFruitRecord,
   getDurianFruitRecords,
   deleteDurianFruitRecord,
+  isDurianFarm,
   type Orchard,
   type TreeProfile,
   type DurianFruitRecord,
@@ -137,8 +138,8 @@ export default function DurianFruitClient() {
         orchardName={orchard.name}
         orchardColor={orchard.color}
         orchardId={orchardId}
-        isDurianBackyard={orchard.name === 'ทุเรียนหลังบ้าน'}
-        title="ทำลูกทุเรียน"
+        isDurianBackyard={isDurianFarm(orchard.name)}
+        title={orchard.name === 'สวนมังคุด' ? 'ทำดอกมังคุด' : 'ทำลูกทุเรียน'}
         Icon={Sprout}
       />
 

@@ -7,6 +7,7 @@ import {
   getCareRecords,
   deleteCareRecord,
   addCareRecord,
+  isDurianFarm,
   type Orchard,
   type CareRecord,
 } from '@/lib/firebase';
@@ -102,7 +103,7 @@ export default function CareTypeClient({
     );
   }
 
-  const isDurianBackyard = orchard.name === 'ทุเรียนหลังบ้าน';
+  const isDurianBackyard = isDurianFarm(orchard.name);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300">
@@ -114,7 +115,7 @@ export default function CareTypeClient({
         title={title}
         Icon={Icon}
       />
-      {isDurianBackyard && <SubMenuTabs activeTab="care" orchardId={orchardId} />}
+      {isDurianBackyard && <SubMenuTabs activeTab="care" orchardId={orchardId} orchardName={orchard.name} />}
 
       <div className="px-5 py-6 max-w-4xl mx-auto">
         {/* ปุ่มกลับ */}

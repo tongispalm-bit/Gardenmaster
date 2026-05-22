@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   getOrchards, getMedicineItems, getNutrientItems,
+  isDurianFarm,
   type Orchard, type MedicineItemRecord, type NutrientItemRecord,
 } from '@/lib/firebase';
 import { FlaskConical, Bug, Sprout, Leaf, ChevronRight, Wallet } from 'lucide-react';
@@ -146,7 +147,7 @@ export default function ChemicalStockClient() {
     );
   }
 
-  const isDurianBackyard = orchard.name === 'ทุเรียนหลังบ้าน';
+  const isDurianBackyard = isDurianFarm(orchard.name);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8">
