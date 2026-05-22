@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from '@/lib/useTheme';
 import { useAuth } from '@/lib/useAuth';
 import { getOrchards, type Orchard } from '@/lib/firebase';
@@ -8,15 +8,12 @@ import { useRouter } from 'next/navigation';
 import {
   Moon,
   Sun,
-  LeafIcon,
   Settings,
   LogOut,
-  Search,
   ChevronRight,
-  TreeDeciduous,
-  Plus,
 } from 'lucide-react';
 import SettingsModal from './_components/SettingsModal';
+import ProfileModal from './_components/ProfileModal';
 import BottomNav from './_components/BottomNav';
 
 const ORCHARDS_PRESET = [
@@ -42,21 +39,20 @@ function getOrchardImage(orchard: Orchard): string | null {
 }
 
 function getOrchardTag(orchard: Orchard): string {
-  if (orchard.name.includes('หลังบ้าน')) return 'ทุเรียน · 91 ต้น · 📍 ผังสวน';
+  if (orchard.name.includes('หลังบ้าน')) return 'ทุเรียน · 91 ต้น';
   if (orchard.name.includes('หมื่นซ่อง')) return 'ทุเรียน';
   return 'มังคุด';
 }
 
 export default function Home() {
   const { isDark, toggleTheme, mounted } = useTheme();
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading, logout, refresh } = useAuth();
   const router = useRouter();
   const [orchards, setOrchards] = useState<Orchard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'all' | 'durian' | 'mangosteen' | 'fav'>('all');
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Auth guard
   useEffect(() => {
@@ -98,18 +94,6 @@ export default function Home() {
     }
   };
 
-  const filteredOrchards = useMemo(() => {
-    let list = orchards;
-    if (filter === 'durian') list = list.filter((o) => o.name.includes('ทุเรียน'));
-    if (filter === 'mangosteen') list = list.filter((o) => o.name.includes('มังคุด'));
-    if (filter === 'fav') list = list.filter((o) => o.name.includes('หลังบ้าน'));
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      list = list.filter((o) => o.name.toLowerCase().includes(q));
-    }
-    return list;
-  }, [orchards, filter, searchTerm]);
-
   if (!mounted || authLoading || !user || loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col items-center justify-center gap-4">
@@ -135,36 +119,49 @@ export default function Home() {
     );
   }
 
-  const initials = (user.displayName || user.username).slice(0, 1).toUpperCase();
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-24">
-      {/* Header — gradient เขียว */}
-      <header className="bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-700 dark:to-emerald-900 text-white px-5 pt-6 pb-8 rounded-b-3xl shadow-lg">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/25 border-2 border-white/80 flex items-center justify-center font-extrabold">
-              {initials}
-            </div>
-            <div>
-              <p className="text-xs opacity-80">ยินดีต้อนรับ</p>
-              <p className="font-bold text-sm">{user.displayName || user.username}</p>
-            </div>
-          </div>
-          <div className="flex gap-1.5">
+      {/* Header — กะทัดรัด */}
+      <header className="bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-700 dark:to-emerald-900 text-white px-5 pt-5 pb-5 rounded-b-3xl shadow-lg">
+        <div className="flex items-center justify-between">
+          {/* ซ้าย: รูปโปรไฟล์ + ชื่อ */}
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+            title="แก้ไขโปรไฟล์"
+          >
+            {user.profileImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.profileImage}
+                alt={user.displayName || user.username}
+                className="w-9 h-9 rounded-full object-cover border-2 border-white/80"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-white/25 border-2 border-white/80 flex items-center justify-center font-extrabold text-sm">
+                {(user.displayName || user.username).slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <span className="text-xs font-bold">
+              {user.displayName || user.username}
+            </span>
+          </button>
+
+          {/* ขวา: ปุ่ม actions */}
+          <div className="flex items-center gap-1.5">
             <button
               onClick={toggleTheme}
-              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
               title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
             >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
             </button>
             <button
               onClick={() => setSettingsOpen(true)}
-              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
               title="ตั้งค่าระบบ"
             >
-              <Settings size={16} />
+              <Settings size={14} />
             </button>
             <button
               onClick={() => {
@@ -173,137 +170,94 @@ export default function Home() {
                   router.replace('/login');
                 }
               }}
-              className="w-9 h-9 rounded-full bg-white/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
               title="ออกจากระบบ"
             >
-              <LogOut size={16} />
+              <LogOut size={14} />
             </button>
           </div>
         </div>
 
-        <div>
-          <h1 className="text-2xl font-extrabold leading-tight">
-            วันนี้คุณดูแล<br />สวนไหนบ้าง? 🌿
+        <div className="text-center mt-3">
+          <h1 className="text-xl font-extrabold">
+            Garden Master 🌿
           </h1>
-          <p className="text-sm opacity-85 mt-1">
-            {orchards.length} สวน · 91 ต้น · พร้อมรับการดูแล
+          <p className="text-xs opacity-85 mt-1">
+            {orchards.length} สวน · พร้อมรับการดูแล
           </p>
-        </div>
-
-        {/* Search */}
-        <div className="relative mt-4">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ค้นหาสวน, ต้นไม้..."
-            className="w-full pl-10 pr-4 py-3 bg-white/95 dark:bg-slate-800 rounded-2xl text-sm text-slate-800 dark:text-slate-200 outline-none focus:ring-2 ring-white/50 placeholder:text-slate-400"
-          />
         </div>
       </header>
 
-      {/* Filter chips */}
-      <div className="flex gap-2 px-5 py-4 overflow-x-auto scrollbar-hide">
-        {[
-          { id: 'all', label: 'ทั้งหมด' },
-          { id: 'durian', label: 'ทุเรียน' },
-          { id: 'mangosteen', label: 'มังคุด' },
-          { id: 'fav', label: '⭐ ที่ชอบ' },
-        ].map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id as typeof filter)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-              filter === f.id
-                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
       {/* Section title */}
-      <div className="flex items-center justify-between px-5 py-2">
+      <div className="flex items-center justify-between px-5 py-3">
         <h2 className="font-bold text-slate-800 dark:text-white">สวนของคุณ</h2>
         <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-          {filteredOrchards.length} รายการ
+          {orchards.length} รายการ
         </span>
       </div>
 
       {/* List */}
       <div className="px-5 space-y-2.5">
-        {filteredOrchards.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 text-center text-slate-500 dark:text-slate-400">
-            <TreeDeciduous size={32} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm">ไม่พบสวนที่ค้นหา</p>
-          </div>
-        ) : (
-          filteredOrchards.map((orchard) => {
-            const isFav = orchard.name.includes('หลังบ้าน');
-            const imgSrc = getOrchardImage(orchard);
-            return (
-              <button
-                key={orchard.id}
-                onClick={() => router.push(`/orchard?id=${orchard.id}`)}
-                className="w-full bg-white dark:bg-slate-800 rounded-2xl p-3.5 flex items-center gap-3.5 shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all border border-slate-100 dark:border-slate-700"
-              >
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 ${getIconBg(orchard)}`}>
-                  {imgSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={imgSrc}
-                      alt={orchard.name}
-                      className="w-full h-full object-contain p-1"
-                      onError={(e) => {
-                        // ถ้ารูปยังไม่มี → fallback เป็น emoji
-                        const target = e.currentTarget;
-                        target.style.display = 'none';
-                        const fallback = target.nextElementSibling as HTMLElement | null;
-                        if (fallback) fallback.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
-                  <span
-                    className="text-3xl w-full h-full items-center justify-center"
-                    style={{ display: imgSrc ? 'none' : 'flex' }}
-                  >
-                    {orchard.icon}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="font-bold text-slate-800 dark:text-white truncate flex items-center gap-1.5">
-                    {orchard.name}
-                    {isFav && <span className="text-amber-500">⭐</span>}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 truncate">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block flex-shrink-0"></span>
-                    {getOrchardTag(orchard)}
-                  </p>
-                </div>
-                <ChevronRight size={20} className="text-slate-400 flex-shrink-0" />
-              </button>
-            );
-          })
-        )}
+        {orchards.map((orchard) => {
+          const imgSrc = getOrchardImage(orchard);
+          return (
+            <button
+              key={orchard.id}
+              onClick={() => router.push(`/orchard?id=${orchard.id}`)}
+              className="w-full bg-white dark:bg-slate-800 rounded-2xl p-3.5 flex items-center gap-3.5 shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all border border-slate-100 dark:border-slate-700"
+            >
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 ${getIconBg(orchard)}`}>
+                {imgSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imgSrc}
+                    alt={orchard.name}
+                    className="w-full h-full object-contain p-1"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = 'none';
+                      const fallback = target.nextElementSibling as HTMLElement | null;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <span
+                  className="text-3xl w-full h-full items-center justify-center"
+                  style={{ display: imgSrc ? 'none' : 'flex' }}
+                >
+                  {orchard.icon}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="font-bold text-slate-800 dark:text-white truncate">
+                  {orchard.name}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 truncate">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block flex-shrink-0"></span>
+                  {getOrchardTag(orchard)}
+                </p>
+              </div>
+              <ChevronRight size={20} className="text-slate-400 flex-shrink-0" />
+            </button>
+          );
+        })}
       </div>
 
-      {/* FAB */}
-      <button
-        className="fixed bottom-24 right-5 w-14 h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/40 flex items-center justify-center z-30 transition-transform active:scale-95"
-        title="เพิ่มข้อมูลใหม่"
-        onClick={() => alert('ยังไม่เปิดใช้งาน — coming soon')}
-      >
-        <Plus size={24} strokeWidth={2.5} />
-      </button>
-
       {/* Bottom Nav */}
-      <BottomNav activeId="home" onProfileClick={() => setSettingsOpen(true)} />
+      <BottomNav activeId="home" onProfileClick={() => setProfileOpen(true)} />
 
       {/* Settings Modal */}
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Profile Modal */}
+      {user && (
+        <ProfileModal
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          user={user}
+          onUpdated={() => refresh()}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { Home, TreeDeciduous, BarChart3, User } from 'lucide-react';
+import { Home, FlaskConical, Wallet, User } from 'lucide-react';
 
 type NavItem = {
   id: string;
@@ -11,16 +11,14 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'home', label: 'หน้าแรก', Icon: Home, path: '/' },
-  { id: 'orchards', label: 'สวน', Icon: TreeDeciduous, path: '/orchard' },
-  { id: 'summary', label: 'สรุป', Icon: BarChart3, path: '/summary' },
-  { id: 'profile', label: 'โปรไฟล์', Icon: User, path: '/profile' },
+  { id: 'home',      label: 'หน้าแรก',     Icon: Home,          path: '/' },
+  { id: 'chemicals', label: 'คลังสารเคมี', Icon: FlaskConical,  path: '/all-chemicals' },
+  { id: 'summary',   label: 'สรุป',        Icon: Wallet,        path: '/all-summary' },
+  { id: 'profile',   label: 'โปรไฟล์',     Icon: User,          path: '#profile' },
 ];
 
 type Props = {
-  /** ระบุ active เอง ถ้าไม่ส่งจะ derive จาก pathname */
   activeId?: string;
-  /** กดโปรไฟล์ → เปิด settings modal */
   onProfileClick?: () => void;
 };
 
@@ -28,32 +26,12 @@ export default function BottomNav({ activeId, onProfileClick }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const cleanPath = (pathname || '').replace(/\/+$/, '');
   const computedActive =
     activeId ??
-    (pathname === '/' ? 'home' :
-     pathname.startsWith('/orchard') ? 'orchards' :
-     pathname.startsWith('/summary') ? 'summary' :
-     pathname.startsWith('/profile') ? 'profile' : 'home');
-
-  const handleClick = (item: NavItem) => {
-    if (item.id === 'profile' && onProfileClick) {
-      onProfileClick();
-      return;
-    }
-    if (item.id === 'home') {
-      router.push('/');
-      return;
-    }
-    if (item.id === 'orchards') {
-      router.push('/');
-      return;
-    }
-    if (item.id === 'summary') {
-      // ยังไม่มีหน้า summary จริง — ไปหน้าแรกก่อน
-      router.push('/');
-      return;
-    }
-  };
+    (cleanPath === '' || cleanPath === '/' ? 'home' :
+     cleanPath.startsWith('/all-chemicals') ? 'chemicals' :
+     cleanPath.startsWith('/all-summary') ? 'summary' : 'home');
 
   return (
     <nav
@@ -68,7 +46,13 @@ export default function BottomNav({ activeId, onProfileClick }: Props) {
           return (
             <button
               key={item.id}
-              onClick={() => handleClick(item)}
+              onClick={() => {
+                if (item.id === 'profile') {
+                  onProfileClick?.();
+                  return;
+                }
+                router.push(item.path);
+              }}
               className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all ${
                 isActive ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'
               }`}

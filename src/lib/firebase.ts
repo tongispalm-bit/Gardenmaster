@@ -251,9 +251,16 @@ export type AppUser = {
   passwordHash: string;
   role: UserRole;
   displayName: string;
+  /** รูปโปรไฟล์ (base64 data URL) */
+  profileImage?: string;
   createdAt: number;
   updatedAt: number;
 };
+
+/** อัปเดตข้อมูลโปรไฟล์ (displayName, profileImage) */
+export async function updateUserProfile(userId: string, data: { displayName?: string; profileImage?: string }) {
+  await updateDoc(doc(db, 'users', userId), { ...data, updatedAt: Date.now() });
+}
 
 /**
  * Hash password ด้วย SHA-256 + salt
