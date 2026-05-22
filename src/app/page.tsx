@@ -25,11 +25,20 @@ const ORCHARDS_PRESET = [
   { name: 'ทุเรียนหมื่นซ่อง', color: '#f39c12', icon: '🍊' },
 ];
 
-// สีพื้นหลัง icon ของแต่ละสวน (ชมพู/เขียว/ส้ม)
+// สีกรอบพาสเทลรอบรูปสวน
 function getIconBg(orchard: Orchard): string {
-  if (orchard.name.includes('มังคุด')) return 'bg-purple-100 dark:bg-purple-900/40';
-  if (orchard.name.includes('หลังบ้าน')) return 'bg-emerald-100 dark:bg-emerald-900/40';
-  return 'bg-orange-100 dark:bg-orange-900/40';
+  if (orchard.name.includes('มังคุด'))      return 'bg-purple-200/70 dark:bg-purple-900/40';   // ม่วงพาสเทล
+  if (orchard.name.includes('หลังบ้าน'))    return 'bg-emerald-200/70 dark:bg-emerald-900/40'; // เขียวพาสเทล
+  if (orchard.name.includes('หมื่นซ่อง'))   return 'bg-orange-200/70 dark:bg-orange-900/40';   // ส้มพาสเทล
+  return 'bg-slate-200 dark:bg-slate-700';
+}
+
+// path รูปสำหรับแต่ละสวน — ถ้ารูปไม่มี จะ fallback เป็น emoji
+function getOrchardImage(orchard: Orchard): string | null {
+  if (orchard.name.includes('มังคุด'))    return '/images/mangosteen.png';
+  if (orchard.name.includes('หลังบ้าน'))  return '/images/durian.png';
+  if (orchard.name.includes('หมื่นซ่อง')) return '/images/durian-cut.png';
+  return null;
 }
 
 function getOrchardTag(orchard: Orchard): string {
@@ -234,14 +243,35 @@ export default function Home() {
         ) : (
           filteredOrchards.map((orchard) => {
             const isFav = orchard.name.includes('หลังบ้าน');
+            const imgSrc = getOrchardImage(orchard);
             return (
               <button
                 key={orchard.id}
                 onClick={() => router.push(`/orchard?id=${orchard.id}`)}
                 className="w-full bg-white dark:bg-slate-800 rounded-2xl p-3.5 flex items-center gap-3.5 shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all border border-slate-100 dark:border-slate-700"
               >
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0 ${getIconBg(orchard)}`}>
-                  {orchard.icon}
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 ${getIconBg(orchard)}`}>
+                  {imgSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imgSrc}
+                      alt={orchard.name}
+                      className="w-full h-full object-contain p-1"
+                      onError={(e) => {
+                        // ถ้ารูปยังไม่มี → fallback เป็น emoji
+                        const target = e.currentTarget;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement | null;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <span
+                    className="text-3xl w-full h-full items-center justify-center"
+                    style={{ display: imgSrc ? 'none' : 'flex' }}
+                  >
+                    {orchard.icon}
+                  </span>
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                   <p className="font-bold text-slate-800 dark:text-white truncate flex items-center gap-1.5">
