@@ -4,11 +4,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { getUserById, type AppUser } from './firebase';
 
 const SESSION_KEY = 'gm-session-v1';
+const SESSION_LOAD_TIMEOUT_MS = 10000;
 
 type SessionData = {
   userId: string;
   loginAt: number;
 };
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error('Session load timeout')), timeoutMs);
+    }),
+  ]);
+}
 
 /**
  * Hook สำหรับ auth state
@@ -27,7 +37,7 @@ export function useAuth() {
         return;
       }
       const session = JSON.parse(raw) as SessionData;
-      const fresh = await getUserById(session.userId);
+      const fresh = await withTimeout(getUserById(session.userId), SESSION_LOAD_TIMEOUT_MS);
       if (!fresh) {
         // user ถูกลบไปแล้ว → clear session
         localStorage.removeItem(SESSION_KEY);
@@ -37,6 +47,7 @@ export function useAuth() {
       setUser(fresh);
     } catch (err) {
       console.error('loadSession error:', err);
+      localStorage.removeItem(SESSION_KEY);
       setUser(null);
     } finally {
       setLoading(false);

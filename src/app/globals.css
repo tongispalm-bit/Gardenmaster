@@ -55,8 +55,10 @@ body {
 
 /* ป้องกัน iOS bounce ที่ขอบบน */
 html, body {
+  min-height: 100%;
   position: relative;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Hide scrollbar but keep scroll functionality */

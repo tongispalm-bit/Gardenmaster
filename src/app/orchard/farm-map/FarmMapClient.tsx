@@ -479,7 +479,7 @@ export default function FarmMapClient() {
   const effectiveMode: Mode = isMango && mode === 'edit-zone' ? 'view' : mode;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8">
       <header className="text-white px-4 pt-4 pb-4" style={{ backgroundColor: orchard.color }}>
         <div className="flex items-center justify-between">
           <button onClick={() => router.push('/')} className="p-1.5 hover:bg-white/20 rounded-full">
@@ -664,13 +664,13 @@ export default function FarmMapClient() {
         )}
 
         {/* Grid */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-2 border border-slate-200 dark:border-slate-700 overflow-x-auto">
-          <div className="min-w-fit">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-1.5 sm:p-2 border border-slate-200 dark:border-slate-700 overflow-hidden touch-pan-y">
+          <div className="w-full min-w-0">
             {/* Column labels */}
-            <div className="grid mb-0.5" style={{ gridTemplateColumns: `20px repeat(${cols}, minmax(40px, 1fr))`, gap: '2px' }}>
+            <div className="grid mb-0.5 min-w-0" style={{ gridTemplateColumns: `18px repeat(${cols}, minmax(0, 1fr))`, gap: '2px' }}>
               <div />
               {Array.from({ length: cols }, (_, i) => (
-                <div key={i} className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400 h-5">
+                <div key={i} className="flex min-w-0 items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400 h-5">
                   C{i + 1}
                 </div>
               ))}
@@ -680,8 +680,8 @@ export default function FarmMapClient() {
             {Array.from({ length: rows }, (_, rIdx) => {
               const row = rIdx + 1;
               return (
-                <div key={row} className="grid mb-0.5" style={{ gridTemplateColumns: `20px repeat(${cols}, minmax(40px, 1fr))`, gap: '2px' }}>
-                  <div className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400">
+                <div key={row} className="grid mb-0.5 min-w-0" style={{ gridTemplateColumns: `18px repeat(${cols}, minmax(0, 1fr))`, gap: '2px' }}>
+                  <div className="flex min-w-0 items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400">
                     R{row}
                   </div>
                   {Array.from({ length: cols }, (_, cIdx) => {
@@ -695,7 +695,7 @@ export default function FarmMapClient() {
                           <button
                             key={col}
                             onClick={() => toggleCell(row, col)}
-                            className="rounded-md bg-slate-100 dark:bg-slate-900/50 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 hover:border-emerald-400 aspect-square flex items-center justify-center transition-all"
+                            className="min-w-0 rounded-md bg-slate-100 dark:bg-slate-900/50 border-2 border-dashed border-slate-300 dark:border-slate-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 hover:border-emerald-400 aspect-square flex items-center justify-center transition-all"
                             title="กดเพื่อเปิดต้น"
                           >
                             <Plus size={14} className="text-slate-400" />
@@ -704,7 +704,7 @@ export default function FarmMapClient() {
                       }
                       return (
                         <div key={col}
-                          className="rounded-md bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700 aspect-square" />
+                          className="min-w-0 rounded-md bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700 aspect-square" />
                       );
                     }
 
@@ -741,7 +741,7 @@ export default function FarmMapClient() {
                           else openEdit(row, col);
                         }}
                         title={isMango ? treeNumber : `${treeNumber} · ${variety}${zone ? ` · โซน ${zone}` : ''}`}
-                        className={`relative rounded-md ${cellBg} ${zoneRing} border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform flex flex-col items-center justify-center aspect-square w-full`}
+                        className={`relative min-w-0 rounded-md ${cellBg} ${zoneRing} border border-slate-200 dark:border-slate-700 active:scale-95 transition-transform flex flex-col items-center justify-center aspect-square w-full`}
                       >
                         {effectiveMode === 'edit-grid' ? (
                           <Minus size={16} className="text-slate-700 dark:text-slate-200" />
