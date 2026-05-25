@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/lib/useTheme';
 import { useAuth } from '@/lib/useAuth';
-import { getOrchards, type Orchard } from '@/lib/firebase';
+import { getOrchards, subscribeOrchards, type Orchard } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import {
   Moon,
@@ -62,33 +62,59 @@ export default function Home() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (user) loadOrchards();
+    if (!user) return;
+    let cancelled = false;
+    let unsubscribe: (() => void) | null = null;
+
+    // โหลดครั้งแรก + auto-seed ถ้ายังไม่มีสวน
+    (async () => {
+      try {
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Firestore timeout — กรุณาตรวจสอบว่าเปิด Firestore Database ใน Firebase Console แล้ว')), 10000)
+        );
+        const data = await Promise.race([getOrchards(), timeout]) as Orchard[];
+        if (cancelled) return;
+
+        if (data.length === 0) {
+          const { addOrchard } = await import('@/lib/firebase');
+          for (const preset of ORCHARDS_PRESET) {
+            await addOrchard({
+              name: preset.name,
+              color: preset.color,
+              icon: preset.icon,
+              createdAt: Date.now(),
+            });
+          }
+        }
+
+        // Subscribe realtime
+        unsubscribe = subscribeOrchards((list) => {
+          if (cancelled) return;
+          setOrchards(list);
+          setLoading(false);
+        });
+      } catch (err) {
+        if (cancelled) return;
+        console.error('Error loading orchards:', err);
+        setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (unsubscribe) unsubscribe();
+    };
   }, [user]);
 
   const loadOrchards = async () => {
+    // เก็บไว้ใช้กรณีต้อง refresh manual (เช่น error retry)
     try {
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Firestore timeout — กรุณาตรวจสอบว่าเปิด Firestore Database ใน Firebase Console แล้ว')), 10000)
-      );
-      const data = await Promise.race([getOrchards(), timeout]) as Orchard[];
-      if (data.length === 0) {
-        const { addOrchard } = await import('@/lib/firebase');
-        for (const preset of ORCHARDS_PRESET) {
-          await addOrchard({
-            name: preset.name,
-            color: preset.color,
-            icon: preset.icon,
-            createdAt: Date.now(),
-          });
-        }
-        const newData = await getOrchards();
-        setOrchards(newData);
-      } else {
-        setOrchards(data);
-      }
-    } catch (error) {
-      console.error('Error loading orchards:', error);
-      setError(error instanceof Error ? error.message : 'เกิดข้อผิดพลาด');
+      const data = await getOrchards();
+      setOrchards(data);
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
     } finally {
       setLoading(false);
     }

@@ -8,6 +8,7 @@ import {
   getUpgradeExpenses,
   deleteUpgradeExpense,
   isDurianFarm,
+  subscribeOrchard, subscribeCollection,
   type Orchard,
   type UpgradeExpense,
 } from '@/lib/firebase';
@@ -41,7 +42,17 @@ export default function UpgradeClient() {
 
   useEffect(() => {
     if (!orchardId) { router.push('/'); return; }
-    loadData();
+
+    const unsubs: Array<() => void> = [
+      subscribeOrchard(orchardId, setOrchard),
+      subscribeCollection<UpgradeExpense>('upgradeExpenses', orchardId, (items) => {
+        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+    ];
+
+    setLoading(false);
+    return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchardId]);
 
   const loadData = async () => {

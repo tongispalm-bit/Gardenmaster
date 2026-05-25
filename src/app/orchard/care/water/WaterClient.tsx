@@ -6,6 +6,7 @@ import {
   getOrchards, getWaterSetting, saveWaterSetting,
   addWaterRecord, getWaterRecords, deleteWaterRecord,
   addStressPeriod, getStressPeriods, deleteStressPeriod,
+  subscribeOrchard, subscribeCollection,
   DURIAN_GROWTH_STAGE_LABEL,
   isDurianFarm,
   type Orchard, type WaterSetting, type WaterRecord, type DurianGrowthStage,
@@ -70,7 +71,27 @@ export default function WaterClient() {
 
   useEffect(() => {
     if (!orchardId) { router.push('/'); return; }
-    loadData();
+
+    // Subscribe realtime
+    const unsubs: Array<() => void> = [
+      subscribeOrchard(orchardId, setOrchard),
+      subscribeCollection<WaterRecord>('waterRecords', orchardId, (items) => {
+        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+      subscribeCollection<StressPeriod>('stressPeriods', orchardId, (items) => {
+        setStressPeriods([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+    ];
+
+    // Water setting (1 doc/orchard) — โหลดครั้งแรกเท่านั้น (เพื่อไม่ overwrite settingForm ตอน user แก้)
+    getWaterSetting(orchardId).then((s) => {
+      setSetting(s);
+      if (s) setSettingForm({ flowRate: String(s.flowRate), headCount: String(s.headCount) });
+    });
+
+    setLoading(false);
+    return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchardId]);
 
   const loadData = async () => {

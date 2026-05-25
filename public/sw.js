@@ -1,7 +1,7 @@
 // Garden Master — Service Worker
 // Strategy: cache-first for app shell, network-first for Firestore-backed pages
 
-const CACHE_VERSION = 'gm-v1';
+const CACHE_VERSION = 'gm-v2';
 const APP_SHELL = `${CACHE_VERSION}-shell`;
 const RUNTIME = `${CACHE_VERSION}-runtime`;
 

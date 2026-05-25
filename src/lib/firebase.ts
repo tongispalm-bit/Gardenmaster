@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, query, orderBy, where, getDocsFromServer } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, query, orderBy, where, getDocsFromServer, onSnapshot } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAXAgFYqnLfvqEQJw6Y4_QoavDo6yCOhI",
@@ -113,6 +113,60 @@ export async function getOrchards() {
   const q = query(collection(db, 'orchards'), orderBy('createdAt', 'asc'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Orchard[];
+}
+
+/**
+ * Subscribe Firestore แบบ realtime — ใช้ onSnapshot
+ * - คืน unsubscribe function
+ * - callback ทำงานทุกครั้งที่ data เปลี่ยน (มี user คนอื่นแก้, ลบ, เพิ่ม)
+ */
+export function subscribeOrchards(callback: (orchards: Orchard[]) => void): () => void {
+  const q = query(collection(db, 'orchards'), orderBy('createdAt', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Orchard[];
+    callback(data);
+  }, (err) => {
+    console.error('subscribeOrchards error:', err);
+  });
+}
+
+/** Subscribe collection ทั่วไปแบบ realtime + filter ตาม orchardId */
+export function subscribeCollection<T>(
+  collectionName: string,
+  orchardId: string,
+  callback: (items: T[]) => void
+): () => void {
+  return onSnapshot(collection(db, collectionName), (snapshot) => {
+    const items = snapshot.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter((item: any) => item.orchardId === orchardId) as T[];
+    callback(items);
+  }, (err) => {
+    console.error(`subscribe ${collectionName} error:`, err);
+  });
+}
+
+/** Subscribe single doc by orchardId — สำหรับ collection ที่มีแค่ 1 doc ต่อสวน (waterSetting, orchardStats, farmMapConfig) */
+export function subscribeDocByOrchard<T>(
+  collectionName: string,
+  orchardId: string,
+  callback: (item: T | null) => void
+): () => void {
+  return onSnapshot(collection(db, collectionName), (snapshot) => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+    const found = items.find(it => it.orchardId === orchardId) as T | undefined;
+    callback(found ?? null);
+  }, (err) => {
+    console.error(`subscribeDocByOrchard ${collectionName} error:`, err);
+  });
+}
+
+/** Subscribe orchard เดียวตาม id */
+export function subscribeOrchard(orchardId: string, callback: (o: Orchard | null) => void): () => void {
+  return onSnapshot(collection(db, 'orchards'), (snapshot) => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Orchard[];
+    callback(items.find(o => o.id === orchardId) ?? null);
+  });
 }
 
 export async function addCareRecord(record: Omit<CareRecord, 'id'>) {

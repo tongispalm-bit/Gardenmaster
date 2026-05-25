@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   getOrchards, addSprayRecord, getSprayRecords, deleteSprayRecord,
   getMedicineItems, getNutrientItems, deductFromStock,
+  subscribeOrchard, subscribeCollection,
   SPRAY_GROUP_LABEL, MEDICINE_UNIT_LABEL,
   isDurianFarm,
   type Orchard, type SprayRecord, type SprayMedicine, type SprayMedicineGroup,
@@ -74,7 +75,35 @@ export default function SprayClient() {
 
   useEffect(() => {
     if (!orchardId) { router.push('/'); return; }
-    loadData();
+
+    let medItems: MedicineItemRecord[] = [];
+    let nutrItems: NutrientItemRecord[] = [];
+    const recomputeStocks = () => {
+      const combined: StockOption[] = [
+        ...medItems.map((m) => ({ id: m.id, group: m.type as SprayMedicineGroup, name: m.name, unit: m.unit, remain: m.amount })),
+        ...nutrItems.map((n) => ({ id: n.id, group: n.type as SprayMedicineGroup, name: n.name, unit: n.unit, remain: n.amount })),
+      ];
+      setStocks(combined);
+    };
+
+    const unsubs: Array<() => void> = [
+      subscribeOrchard(orchardId, setOrchard),
+      subscribeCollection<SprayRecord>('sprayRecords', orchardId, (items) => {
+        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+      subscribeCollection<MedicineItemRecord>('medicineItems', orchardId, (items) => {
+        medItems = items;
+        recomputeStocks();
+      }),
+      subscribeCollection<NutrientItemRecord>('nutrientItems', orchardId, (items) => {
+        nutrItems = items;
+        recomputeStocks();
+      }),
+    ];
+
+    setLoading(false);
+    return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchardId]);
 
   const loadData = async () => {
@@ -87,22 +116,9 @@ export default function SprayClient() {
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
       setRecords(r);
-      // รวมทั้ง 4 กลุ่มเข้าเป็น stocks
       const combined: StockOption[] = [
-        ...medItems.map((m: MedicineItemRecord) => ({
-          id: m.id,
-          group: m.type as SprayMedicineGroup, // 'insecticide' | 'fungicide'
-          name: m.name,
-          unit: m.unit,
-          remain: m.amount,
-        })),
-        ...nutrItems.map((n: NutrientItemRecord) => ({
-          id: n.id,
-          group: n.type as SprayMedicineGroup, // 'hormone' | 'fertilizer'
-          name: n.name,
-          unit: n.unit,
-          remain: n.amount,
-        })),
+        ...medItems.map((m: MedicineItemRecord) => ({ id: m.id, group: m.type as SprayMedicineGroup, name: m.name, unit: m.unit, remain: m.amount })),
+        ...nutrItems.map((n: NutrientItemRecord) => ({ id: n.id, group: n.type as SprayMedicineGroup, name: n.name, unit: n.unit, remain: n.amount })),
       ];
       setStocks(combined);
     } catch (e) { console.error(e); }

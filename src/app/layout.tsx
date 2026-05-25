@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWARegister from "./_components/PWARegister";
+import UpdatePrompt from "./_components/UpdatePrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -82,6 +83,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col safe-area-pad">
         {children}
         <PWARegister />
+        <UpdatePrompt />
       </body>
     </html>
   );

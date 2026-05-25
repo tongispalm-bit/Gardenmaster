@@ -9,6 +9,7 @@ import {
   deleteGeneralExpense,
   WORK_TYPE_LABEL,
   isDurianFarm,
+  subscribeOrchard, subscribeCollection,
   type Orchard,
   type GeneralExpense,
   type WorkType,
@@ -50,7 +51,17 @@ export default function ExpenseClient() {
 
   useEffect(() => {
     if (!orchardId) { router.push('/'); return; }
-    loadData();
+
+    const unsubs: Array<() => void> = [
+      subscribeOrchard(orchardId, setOrchard),
+      subscribeCollection<GeneralExpense>('generalExpenses', orchardId, (items) => {
+        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+    ];
+
+    setLoading(false);
+    return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchardId]);
 
   const loadData = async () => {

@@ -6,6 +6,7 @@ import {
   getOrchards,
   addFertilizerRecord, getFertilizerRecords, deleteFertilizerRecord,
   getNutrientItems, deductFromStock,
+  subscribeOrchard, subscribeCollection,
   GROWTH_STAGE_LABEL, MEDICINE_UNIT_LABEL,
   isDurianFarm,
   type Orchard, type FertilizerRecord, type GrowthStage,
@@ -48,7 +49,20 @@ export default function FertilizeClient() {
 
   useEffect(() => {
     if (!orchardId) { router.push('/'); return; }
-    loadData();
+
+    const unsubs: Array<() => void> = [
+      subscribeOrchard(orchardId, setOrchard),
+      subscribeCollection<FertilizerRecord>('fertilizerRecords', orchardId, (items) => {
+        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+      subscribeCollection<NutrientItemRecord>('nutrientItems', orchardId, (items) => {
+        setStocks(items.filter(it => it.type === 'fertilizer').sort((a, b) => b.createdAt - a.createdAt));
+      }),
+    ];
+
+    setLoading(false);
+    return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchardId]);
 
   const loadData = async () => {
@@ -56,7 +70,7 @@ export default function FertilizeClient() {
       const [orchards, r, fertItems] = await Promise.all([
         getOrchards(),
         getFertilizerRecords(orchardId),
-        getNutrientItems(orchardId, 'fertilizer'),  // เฉพาะปุ๋ยในคลัง
+        getNutrientItems(orchardId, 'fertilizer'),
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
       setRecords(r);

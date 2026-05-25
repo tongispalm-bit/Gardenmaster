@@ -6,9 +6,11 @@ import {
   getOrchards,
   getWaterRecords, getFertilizerRecords, getSprayRecords,
   getOrchardStats, saveOrchardStats,
+  subscribeOrchard, subscribeCollection, subscribeDocByOrchard,
   DURIAN_GROWTH_STAGE_LABEL, GROWTH_STAGE_LABEL, MEDICINE_UNIT_LABEL, SPRAY_GROUP_LABEL,
   isDurianFarm, isMangosteenFarm,
   type Orchard, type WaterRecord, type FertilizerRecord, type SprayRecord,
+  type OrchardStats,
 } from '@/lib/firebase';
 import {
   LeafIcon, Leaf, Bug, Droplets, Sprout,
@@ -137,11 +139,35 @@ export default function CareClient() {
       router.push('/');
       return;
     }
-    loadData();
     loadWeather();
+
+    // Subscribe realtime: orchards + ทุก collection ที่ใช้ในหน้านี้
+    const unsubs: Array<() => void> = [
+      subscribeOrchard(orchardId, setOrchard),
+      subscribeCollection<WaterRecord>('waterRecords', orchardId, (items) => {
+        setWaterRecs([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+      subscribeCollection<FertilizerRecord>('fertilizerRecords', orchardId, (items) => {
+        setFertRecs([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+      subscribeCollection<SprayRecord>('sprayRecords', orchardId, (items) => {
+        setSprayRecs([...items].sort((a, b) => b.createdAt - a.createdAt));
+      }),
+      subscribeDocByOrchard<OrchardStats>('orchardStats', orchardId, (stats) => {
+        const tc = stats?.treeCount ?? 0;
+        setTreeCount(tc);
+        setTreeCountInput(prev => editingTreeCount ? prev : String(tc));
+      }),
+    ];
+
+    setLoading(false);
+
+    return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orchardId]);
 
   const loadData = async () => {
+    // Manual reload — ใช้กรณี error retry
     try {
       const [orchards, w, f, s, stats] = await Promise.all([
         getOrchards(),
