@@ -10,6 +10,7 @@ import {
   isDurianFarm,
   isMangosteenFarm,
   subscribeOrchard, subscribeCollection,
+  getOrchardGrades,
   type Orchard,
   type SaleRecord,
   type DurianGrade,
@@ -20,8 +21,6 @@ import { ShoppingCart, Trash2, Plus, X } from 'lucide-react';
 import SubMenuTabs from '../_components/SubMenuTabs';
 import SubPageHeader from '../_components/SubPageHeader';
 
-const DURIAN_GRADES: DurianGrade[] = ['AB', 'C', 'D', 'อินโด', 'ตกไซร้', 'จัมโบ้-เข้', 'ห้องเย็น', 'สทและเอาไว้เอา'];
-const MANGOSTEEN_GRADES: MangosteenGrade[] = ['เบอร์หัว', 'ดอกดำ', 'เบอร์รวม'];
 const CUT_RATES = [4, 5, 6, 7, 8, 9, 10];
 
 export default function SalesClient() {
@@ -36,12 +35,9 @@ export default function SalesClient() {
   const [showHistory, setShowHistory] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // เช็คว่าเป็นสวนมังคุดหรือไม่
-  const isMangosteen = orchard ? isMangosteenFarm(orchard.name) : false;
-  
-  // เลือก grades ตามประเภทสวน
-  const GRADES: FruitGrade[] = isMangosteen ? MANGOSTEEN_GRADES : DURIAN_GRADES;
-  const defaultGrade: FruitGrade = isMangosteen ? 'เบอร์หัว' : 'AB';
+  // ── Grades ของสวนนี้ (ดึงจาก config) ──
+  const [GRADES, setGRADES] = useState<string[]>([]);
+  const defaultGrade = GRADES[0] || 'AB';
 
   // Form state
   const [form, setForm] = useState({
@@ -62,12 +58,15 @@ export default function SalesClient() {
     loadData();
   }, [orchardId]);
 
-  // อัปเดต form.grade เมื่อเปลี่ยนสวน
+  // โหลด grades config เมื่อมี orchard
   useEffect(() => {
     if (orchard) {
-      setForm(prev => ({ ...prev, grade: defaultGrade }));
+      getOrchardGrades(orchard.id, orchard.name).then(grades => {
+        setGRADES(grades);
+        setForm(prev => ({ ...prev, grade: grades[0] || 'AB' }));
+      });
     }
-  }, [orchard, defaultGrade]);
+  }, [orchard]);
 
   const loadData = async () => {
     try {

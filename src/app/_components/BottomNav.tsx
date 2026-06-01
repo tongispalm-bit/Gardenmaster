@@ -12,7 +12,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'home',      label: 'หน้าแรก',     Icon: Home,          path: '/' },
-  { id: 'chemicals', label: 'คลังสารเคมี', Icon: FlaskConical,  path: '/all-chemicals' },
+  { id: 'chemicals', label: 'คลังสารเคมี', Icon: FlaskConical,  path: '/chemical-orchards' },
   { id: 'summary',   label: 'สรุป',        Icon: Wallet,        path: '/all-summary' },
   { id: 'profile',   label: 'โปรไฟล์',     Icon: User,          path: '#profile' },
 ];
@@ -30,7 +30,8 @@ export default function BottomNav({ activeId, onProfileClick }: Props) {
   const computedActive =
     activeId ??
     (cleanPath === '' || cleanPath === '/' ? 'home' :
-     cleanPath.startsWith('/all-chemicals') ? 'chemicals' :
+     cleanPath.startsWith('/chemical-orchards') ? 'chemicals' :
+     cleanPath.startsWith('/orchard/chemical-stock') ? 'chemicals' :
      cleanPath.startsWith('/all-summary') ? 'summary' : 'home');
 
   return (

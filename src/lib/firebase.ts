@@ -441,6 +441,54 @@ export type MangosteenGrade = 'เบอร์หัว' | 'ดอกดำ' | '
 /** เกรดผลไม้ทั่วไป — รวมทั้งทุเรียนและมังคุด */
 export type FruitGrade = DurianGrade | MangosteenGrade;
 
+// ── Orchard Grades Config (ตั้งค่า grades แยกตามสวน) ────────
+/** ค่า default grades สำหรับแต่ละสวน */
+export const DEFAULT_GRADES: Record<string, string[]> = {
+  'ทุเรียนหลังบ้าน': ['AB', 'C', 'D', 'อินโด', 'ตกไซร้', 'จัมโบ้-เข้', 'ห้องเย็น'],
+  'ทุเรียนหมื่นซ่อง': ['AB', 'C', 'D', 'อินโด', 'ตกไซร้', 'จัมโบ้-เข้', 'ห้องเย็น'],
+  'สวนมังคุด': ['เบอร์หัว', 'ดอกดำ', 'เบอร์รวม'],
+};
+
+export type OrchardGradesConfig = {
+  id: string;
+  orchardId: string;
+  /** รายการ grades ที่ใช้ในสวนนี้ */
+  grades: string[];
+  updatedAt: number;
+};
+
+export async function getOrchardGrades(orchardId: string, orchardName: string): Promise<string[]> {
+  const snapshot = await getDocs(collection(db, 'orchardGradesConfigs'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as OrchardGradesConfig[];
+  const config = all.find(c => c.orchardId === orchardId);
+  
+  if (config) return config.grades;
+  
+  // ถ้ายังไม่มี config → ใช้ค่า default ตามชื่อสวน
+  return DEFAULT_GRADES[orchardName] || DEFAULT_GRADES['ทุเรียนหลังบ้าน'];
+}
+
+export async function saveOrchardGrades(orchardId: string, grades: string[]): Promise<string> {
+  const snapshot = await getDocs(collection(db, 'orchardGradesConfigs'));
+  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as OrchardGradesConfig[];
+  const existing = all.find(c => c.orchardId === orchardId);
+  
+  if (existing) {
+    await updateDoc(doc(db, 'orchardGradesConfigs', existing.id), {
+      grades,
+      updatedAt: Date.now(),
+    });
+    return existing.id;
+  }
+  
+  const docRef = await addDoc(collection(db, 'orchardGradesConfigs'), {
+    orchardId,
+    grades,
+    updatedAt: Date.now(),
+  });
+  return docRef.id;
+}
+
 export type SaleRecord = {
   id: string;
   orchardId: string;

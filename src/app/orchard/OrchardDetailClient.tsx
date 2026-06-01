@@ -14,6 +14,8 @@ import {
   Moon,
   Sun,
   ChevronRight,
+  FlaskConical,
+  Wallet,
 } from 'lucide-react';
 
 const MENU_ITEMS = [
@@ -50,6 +52,22 @@ const MENU_ITEMS = [
     iconBg: 'bg-pink-500/10',
   },
   {
+    id: 'chemical-stock',
+    path: '/orchard/chemical-stock',
+    label: 'คลังสารเคมี',
+    Icon: FlaskConical,
+    iconColor: 'text-purple-400',
+    iconBg: 'bg-purple-500/10',
+  },
+  {
+    id: 'expense-summary',
+    path: '/orchard/expense-summary',
+    label: 'สรุปรายจ่าย',
+    Icon: Wallet,
+    iconColor: 'text-teal-400',
+    iconBg: 'bg-teal-500/10',
+  },
+  {
     id: 'hospital',
     path: '/orchard/hospital',
     label: 'ห้องพยาบาล',
@@ -76,12 +94,10 @@ export default function OrchardDetailClient() {
     loadData();
   }, [orchardId]);
 
-  // Redirect ไปหน้าผังสวนทันทีถ้าเป็นสวนทุเรียน
-  // สวนมังคุด → ไปหน้าการดูแลแทน (ไม่มีผังสวน)
+  // Redirect ไปหน้าผังสวนทันทีถ้าเป็นสวนที่มี farm map
   useEffect(() => {
     if (orchard && isDurianFarm(orchard.name)) {
-      const target = orchard.name === 'สวนมังคุด' ? 'care' : 'farm-map';
-      router.replace(`/orchard/${target}?id=${orchardId}`);
+      router.replace(`/orchard/farm-map?id=${orchardId}`);
     }
   }, [orchard, orchardId, router]);
 
@@ -155,7 +171,7 @@ export default function OrchardDetailClient() {
                   >
                     <Icon size={36} className={item.iconColor} strokeWidth={2} />
                   </div>
-                  <span className="font-bold text-base text-slate-700 dark:text-slate-200">
+                  <span className="font-bold text-base text-slate-700 dark:text-slate-200 text-center">
                     {item.label}
                   </span>
                 </div>
