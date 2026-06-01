@@ -26,6 +26,7 @@ const GROUP_META: GroupMeta[] = [
   { id: 'fungicide',   label: 'ยารา',     Icon: Sprout,      color: 'emerald' },
   { id: 'hormone',     label: 'ฮอร์โมน', Icon: FlaskConical, color: 'pink' },
   { id: 'fertilizer',  label: 'ปุ๋ย',     Icon: Leaf,        color: 'amber' },
+  { id: 'bioproduct',  label: 'ชีวภัณฑ์', Icon: Leaf,        color: 'teal' },
 ];
 
 // item จาก stock พร้อม group
@@ -55,13 +56,14 @@ export default function SprayClient() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // medicines แยกเป็น 4 กลุ่ม
+  // medicines แยกเป็น 5 กลุ่ม
   type GroupedForm = Record<SprayMedicineGroup, SprayMedicine[]>;
   const emptyGroupedMeds: GroupedForm = {
     insecticide: [],
     fungicide: [],
     hormone: [],
     fertilizer: [],
+    bioproduct: [],
   };
 
   const emptyForm = {
@@ -128,7 +130,7 @@ export default function SprayClient() {
   // stocks แยกตามกลุ่ม
   const stocksByGroup = useMemo(() => {
     const m: Record<SprayMedicineGroup, StockOption[]> = {
-      insecticide: [], fungicide: [], hormone: [], fertilizer: [],
+      insecticide: [], fungicide: [], hormone: [], fertilizer: [], bioproduct: [],
     };
     for (const s of stocks) {
       if (m[s.group]) m[s.group].push(s);
@@ -254,8 +256,8 @@ export default function SprayClient() {
         createdAt: Date.now(),
       });
 
-      // 2) หักปริมาณจาก stock — เฉพาะรายการที่มี stockId
-      const toDeduct = meds.filter(m => m.stockId && m.amount);
+      // 2) หักปริมาณจาก stock — เฉพาะรายการที่มี stockId และ group
+      const toDeduct = meds.filter(m => m.stockId && m.group && m.amount);
       if (toDeduct.length > 0) {
         const results = await deductFromStock(toDeduct);
         const failed = results.filter(r => !r.ok);
@@ -265,10 +267,12 @@ export default function SprayClient() {
         }
       }
 
-      setForm({ ...emptyForm, medicines: { insecticide: [], fungicide: [], hormone: [], fertilizer: [] } });
-      await loadData();
+      setForm({ ...emptyForm, medicines: { insecticide: [], fungicide: [], hormone: [], fertilizer: [], bioproduct: [] } });
       setShowAddModal(false);
-    } catch { alert('บันทึกไม่สำเร็จ'); }
+    } catch (e) { 
+      console.error('[Spray] Save error:', e);
+      alert('บันทึกไม่สำเร็จ'); 
+    }
     finally { setSaving(false); }
   };
 

@@ -56,7 +56,7 @@ export default function FertilizeClient() {
         setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
       }),
       subscribeCollection<NutrientItemRecord>('nutrientItems', orchardId, (items) => {
-        setStocks(items.filter(it => it.type === 'fertilizer').sort((a, b) => b.createdAt - a.createdAt));
+        setStocks(items.filter(it => it.type === 'fertilizer' || it.type === 'bioproduct').sort((a, b) => b.createdAt - a.createdAt));
       }),
     ];
 
@@ -70,11 +70,11 @@ export default function FertilizeClient() {
       const [orchards, r, fertItems] = await Promise.all([
         getOrchards(),
         getFertilizerRecords(orchardId),
-        getNutrientItems(orchardId, 'fertilizer'),
+        getNutrientItems(orchardId),
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
       setRecords(r);
-      setStocks(fertItems);
+      setStocks(fertItems.filter(it => it.type === 'fertilizer' || it.type === 'bioproduct'));
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -304,27 +304,27 @@ export default function FertilizeClient() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-                  3. สูตรปุ๋ย <span className="text-red-500">*</span>
+                  3. สูตรปุ๋ย / ชีวภัณฑ์ <span className="text-red-500">*</span>
                 </label>
                 <select value={form.stockId}
                   onChange={e => setForm({ ...form, stockId: e.target.value })}
                   className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-emerald-500 text-sm text-slate-800 dark:text-white">
-                  <option value="">-- เลือกสูตรปุ๋ย --</option>
+                  <option value="">-- เลือกสูตรปุ๋ยหรือชีวภัณฑ์ --</option>
                   {stocks.length === 0 ? (
-                    <option disabled>(ไม่มีในคลัง — เพิ่มก่อนใน คลังสารเคมี → ปุ๋ย)</option>
+                    <option disabled>(ไม่มีในคลัง — เพิ่มก่อนใน คลังสารเคมี)</option>
                   ) : (
                     stocks.map(s => (
                       <option key={s.id} value={s.id}>
-                        {s.name}{s.formula ? ` (${s.formula})` : ''} · เหลือ {s.amount} {MEDICINE_UNIT_LABEL[s.unit] ?? s.unit}
+                        [{s.type === 'bioproduct' ? 'ชีวภัณฑ์' : 'ปุ๋ย'}] {s.name}{s.formula ? ` (${s.formula})` : ''} · เหลือ {s.amount} {MEDICINE_UNIT_LABEL[s.unit] ?? s.unit}
                       </option>
                     ))
                   )}
                 </select>
                 {stocks.length === 0 && (
                   <button type="button"
-                    onClick={() => router.push(`/orchard/chemical-stock/nutrient/fertilizer?id=${orchardId}`)}
+                    onClick={() => router.push(`/orchard/chemical-stock?id=${orchardId}`)}
                     className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-bold underline">
-                    → ไปที่คลังสารเคมี (ปุ๋ย) เพื่อเพิ่มสูตร
+                    → ไปที่คลังสารเคมี เพื่อเพิ่มสูตร
                   </button>
                 )}
               </div>

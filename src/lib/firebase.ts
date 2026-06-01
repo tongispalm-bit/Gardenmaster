@@ -706,13 +706,14 @@ export async function deleteFertilizerRecord(id: string) {
 
 // ── Spray Records ────────────────────────────────────────────
 /** กลุ่มของยาที่ใช้พ่น — ลิงก์กับคลังสารเคมี */
-export type SprayMedicineGroup = 'insecticide' | 'fungicide' | 'hormone' | 'fertilizer';
+export type SprayMedicineGroup = 'insecticide' | 'fungicide' | 'hormone' | 'fertilizer' | 'bioproduct';
 
 export const SPRAY_GROUP_LABEL: Record<SprayMedicineGroup, string> = {
   insecticide: 'ยาฆ่าแมลง',
   fungicide:   'ยารา',
   hormone:     'ฮอร์โมน',
   fertilizer:  'ปุ๋ย',
+  bioproduct:  'ชีวภัณฑ์',
 };
 
 export type SprayMedicine = {
@@ -928,12 +929,13 @@ export async function deleteMedicineItem(id: string) {
 
 
 // ── Nutrient Stock (ธาตุอาหาร) — ใช้ schema เดียวกับ MedicineItemRecord ────
-/** ชนิดธาตุอาหาร — ปุ๋ย / ฮอร์โมน (placeholder ปรับภายหลัง) */
-export type NutrientType = 'fertilizer' | 'hormone';
+/** ชนิดธาตุอาหาร — ปุ๋ย / ฮอร์โมน / ชีวภัณฑ์ */
+export type NutrientType = 'fertilizer' | 'hormone' | 'bioproduct';
 
 export const NUTRIENT_TYPE_LABEL: Record<NutrientType, string> = {
   fertilizer: 'ปุ๋ย',
   hormone: 'ฮอร์โมน',
+  bioproduct: 'ชีวภัณฑ์',
 };
 
 export type NutrientItemRecord = {

@@ -10,7 +10,7 @@ import {
 import { FlaskConical, Bug, Sprout, Leaf, ChevronRight, Wallet } from 'lucide-react';
 import SubPageHeader from '../_components/SubPageHeader';
 
-type GroupKey = 'fungicide' | 'insecticide' | 'fertilizer' | 'hormone';
+type GroupKey = 'fungicide' | 'insecticide' | 'fertilizer' | 'hormone' | 'bioproduct';
 
 type SubMenu = {
   id: GroupKey;
@@ -69,6 +69,17 @@ const SUB_MENUS: SubMenu[] = [
     borderColor: 'border-pink-200 dark:border-pink-800',
     totalColor: 'text-pink-600 dark:text-pink-400',
   },
+  {
+    id: 'bioproduct',
+    path: '/orchard/chemical-stock/nutrient/bioproduct',
+    label: 'ชีวภัณฑ์',
+    description: 'จุลินทรีย์ ชีวภัณฑ์ สารสกัดจากธรรมชาติ',
+    Icon: Leaf,
+    iconBg: 'bg-teal-100 dark:bg-teal-900/30',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    borderColor: 'border-teal-200 dark:border-teal-800',
+    totalColor: 'text-teal-600 dark:text-teal-400',
+  },
 ];
 
 const formatBaht = (n: number) =>
@@ -116,6 +127,7 @@ export default function ChemicalStockClient() {
       insecticide: { total: 0, count: 0 },
       fertilizer:  { total: 0, count: 0 },
       hormone:     { total: 0, count: 0 },
+      bioproduct:  { total: 0, count: 0 },
     };
     for (const it of medicineItems) {
       const k = it.type as GroupKey;

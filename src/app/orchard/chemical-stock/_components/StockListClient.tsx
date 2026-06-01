@@ -677,38 +677,50 @@ export default function StockListClient({
                 />
               </div>
 
-              {/* 2. ประเภท toggle — render จาก categories prop */}
+              {/* 2. ประเภท / วัตถุประสงค์ — render จาก categories prop */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">{categoryLabel}</label>
-                <div className={`grid gap-2 ${
-                  categoryCols === 3 ? 'grid-cols-3' : 'grid-cols-2'
-                }`}>
-                  {categories.map(opt => {
-                    const isActive = form.category === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => {
-                          // ถ้า category นี้กำหนด unit override → set unit ให้ด้วย
-                          setForm(prev => ({
-                            ...prev,
-                            category: opt.value as MedicineCategory,
-                            ...(opt.unit ? { unit: opt.unit } : {}),
-                          }));
-                        }}
-                        className={`py-2.5 px-2 rounded-xl font-bold text-xs border-2 flex items-center justify-center gap-1 transition-all ${
-                          isActive
-                            ? `bg-${opt.color}-50 dark:bg-${opt.color}-900/30 text-${opt.color}-600 dark:text-${opt.color}-400 border-${opt.color}-400`
-                            : 'bg-slate-50 dark:bg-slate-700 text-slate-500 border-transparent'
-                        }`}
-                      >
-                        {opt.icon && <span>{opt.icon}</span>}
-                        <span className="leading-tight">{opt.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {categories.length === 1 && categories[0].value === 'purpose' ? (
+                  // โหมดกรอกวัตถุประสงค์เอง (text field)
+                  <input
+                    type="text"
+                    value={form.note}
+                    onChange={e => setForm({ ...form, note: e.target.value })}
+                    placeholder="เช่น ป้องกันโรค, เพิ่มจุลินทรีย์ในดิน..."
+                    className={`w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ${a.ring} text-slate-800 dark:text-white text-sm`}
+                  />
+                ) : (
+                  // โหมดปุ่ม toggle
+                  <div className={`grid gap-2 ${
+                    categoryCols === 3 ? 'grid-cols-3' : categoryCols === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                  }`}>
+                    {categories.map(opt => {
+                      const isActive = form.category === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            // ถ้า category นี้กำหนด unit override → set unit ให้ด้วย
+                            setForm(prev => ({
+                              ...prev,
+                              category: opt.value as MedicineCategory,
+                              ...(opt.unit ? { unit: opt.unit } : {}),
+                            }));
+                          }}
+                          className={`py-2.5 px-2 rounded-xl font-bold text-xs border-2 flex items-center justify-center gap-1 transition-all ${
+                            isActive
+                              ? `bg-${opt.color}-50 dark:bg-${opt.color}-900/30 text-${opt.color}-600 dark:text-${opt.color}-400 border-${opt.color}-400`
+                              : 'bg-slate-50 dark:bg-slate-700 text-slate-500 border-transparent'
+                          }`}
+                        >
+                          {opt.icon && <span>{opt.icon}</span>}
+                          <span className="leading-tight">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* 3. ชื่อ — เลือกจากที่เคยกรอกหรือพิมพ์ใหม่ */}
@@ -925,17 +937,19 @@ export default function StockListClient({
                 </div>
               </div>
 
-              {/* หมายเหตุ */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">หมายเหตุ</label>
-                <input
-                  type="text"
-                  value={form.note}
-                  onChange={e => setForm({ ...form, note: e.target.value })}
-                  placeholder="เพิ่มเติม..."
-                  className={`w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ${a.ring} text-slate-800 dark:text-white text-sm`}
-                />
-              </div>
+              {/* หมายเหตุ — ซ่อนถ้าใช้โหมดวัตถุประสงค์ (เพราะใช้ note เป็นวัตถุประสงค์แล้ว) */}
+              {!(categories.length === 1 && categories[0].value === 'purpose') && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">หมายเหตุ</label>
+                  <input
+                    type="text"
+                    value={form.note}
+                    onChange={e => setForm({ ...form, note: e.target.value })}
+                    placeholder="เพิ่มเติม..."
+                    className={`w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ${a.ring} text-slate-800 dark:text-white text-sm`}
+                  />
+                </div>
+              )}
 
               <div className="flex gap-2 pt-2">
                 <button
