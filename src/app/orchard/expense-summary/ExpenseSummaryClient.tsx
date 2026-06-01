@@ -196,7 +196,7 @@ export default function ExpenseSummaryClient() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8 overflow-x-hidden">
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}

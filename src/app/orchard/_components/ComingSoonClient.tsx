@@ -54,7 +54,7 @@ export default function ComingSoonClient({ tabId, title, Icon, accentClass }: Pr
   const isDurianBackyard = isDurianFarm(orchard.name);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 overflow-x-hidden">
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}

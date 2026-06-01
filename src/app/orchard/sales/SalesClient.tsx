@@ -158,7 +158,7 @@ export default function SalesClient() {
   const isDurianBackyard = isDurianFarm(orchard.name);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8">
+    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8 overflow-x-hidden">
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}

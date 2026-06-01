@@ -169,7 +169,7 @@ export default function FertilizeClient() {
   if (!orchard || loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div></div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8 overflow-x-hidden">
       <SubPageHeader orchardName={orchard.name} orchardColor={orchard.color} orchardId={orchardId} isDurianBackyard={isDurianFarm(orchard.name)} title="ใส่ปุ๋ย" Icon={Leaf} />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">

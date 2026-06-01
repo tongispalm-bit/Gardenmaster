@@ -106,7 +106,7 @@ export default function OrchardDetailClient() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 overflow-x-hidden">
       {/* Header */}
       <header
         className="text-white px-6 pt-6 pb-12"

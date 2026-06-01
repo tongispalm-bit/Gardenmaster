@@ -59,6 +59,18 @@ html, body {
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* ป้องกัน horizontal scroll ทุกหน้า */
+* {
+  max-width: 100%;
+}
+
+/* ยกเว้น element ที่ต้องการ overflow */
+.allow-overflow {
+  max-width: none;
 }
 
 /* Hide scrollbar but keep scroll functionality */

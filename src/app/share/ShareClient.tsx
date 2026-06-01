@@ -80,7 +80,7 @@ export default function ShareClient() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8 overflow-x-hidden">
       <header className="bg-emerald-500 text-white px-4 py-3 flex items-center justify-between">
         <button
           onClick={() => router.push('/')}

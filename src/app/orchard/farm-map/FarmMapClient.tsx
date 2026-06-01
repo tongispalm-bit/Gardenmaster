@@ -479,7 +479,7 @@ export default function FarmMapClient() {
   const effectiveMode: Mode = isMango && mode === 'edit-zone' ? 'view' : mode;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8">
+    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8 overflow-x-hidden">
       <header className="text-white px-4 pt-4 pb-4" style={{ backgroundColor: orchard.color }}>
         <div className="flex items-center justify-between">
           <button onClick={() => router.push('/')} className="p-1.5 hover:bg-white/20 rounded-full">
