@@ -432,13 +432,20 @@ export async function ensureAdminSeeded(): Promise<void> {
 }
 
 // ── Sale Records (การซื้อขาย) ───────────────────────────────
-export type DurianGrade = 'เบอร์หัว' | 'ดอกดำ' | 'เบอร์รวม';
+/** เกรดทุเรียน — ใช้สำหรับสวนทุเรียนหลังบ้าน และทุเรียนหมื่นซ่อง */
+export type DurianGrade = 'AB' | 'C' | 'D' | 'อินโด' | 'ตกไซร้' | 'จัมโบ้-เข้' | 'ห้องเย็น' | 'สทและเอาไว้เอา';
+
+/** เกรดมังคุด — ใช้สำหรับสวนมังคุด */
+export type MangosteenGrade = 'เบอร์หัว' | 'ดอกดำ' | 'เบอร์รวม';
+
+/** เกรดผลไม้ทั่วไป — รวมทั้งทุเรียนและมังคุด */
+export type FruitGrade = DurianGrade | MangosteenGrade;
 
 export type SaleRecord = {
   id: string;
   orchardId: string;
   date: string;
-  grade: DurianGrade;
+  grade: FruitGrade;
   weight: number;        // กิโลกรัม
   pricePerKg: number;    // บาท/กก
   totalAmount: number;   // น้ำหนัก × ราคา/กก

@@ -8,16 +8,20 @@ import {
   addSaleRecord,
   deleteSaleRecord,
   isDurianFarm,
+  isMangosteenFarm,
   subscribeOrchard, subscribeCollection,
   type Orchard,
   type SaleRecord,
   type DurianGrade,
+  type MangosteenGrade,
+  type FruitGrade,
 } from '@/lib/firebase';
 import { ShoppingCart, Trash2, Plus, X } from 'lucide-react';
 import SubMenuTabs from '../_components/SubMenuTabs';
 import SubPageHeader from '../_components/SubPageHeader';
 
-const GRADES: DurianGrade[] = ['เบอร์หัว', 'ดอกดำ', 'เบอร์รวม'];
+const DURIAN_GRADES: DurianGrade[] = ['AB', 'C', 'D', 'อินโด', 'ตกไซร้', 'จัมโบ้-เข้', 'ห้องเย็น', 'สทและเอาไว้เอา'];
+const MANGOSTEEN_GRADES: MangosteenGrade[] = ['เบอร์หัว', 'ดอกดำ', 'เบอร์รวม'];
 const CUT_RATES = [4, 5, 6, 7, 8, 9, 10];
 
 export default function SalesClient() {
@@ -32,10 +36,17 @@ export default function SalesClient() {
   const [showHistory, setShowHistory] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // เช็คว่าเป็นสวนมังคุดหรือไม่
+  const isMangosteen = orchard ? isMangosteenFarm(orchard.name) : false;
+  
+  // เลือก grades ตามประเภทสวน
+  const GRADES: FruitGrade[] = isMangosteen ? MANGOSTEEN_GRADES : DURIAN_GRADES;
+  const defaultGrade: FruitGrade = isMangosteen ? 'เบอร์หัว' : 'AB';
+
   // Form state
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
-    grade: 'เบอร์หัว' as DurianGrade,
+    grade: defaultGrade,
     weight: 0,
     pricePerKg: 0,
     cutRate: 5,
@@ -50,6 +61,13 @@ export default function SalesClient() {
     if (!orchardId) { router.push('/'); return; }
     loadData();
   }, [orchardId]);
+
+  // อัปเดต form.grade เมื่อเปลี่ยนสวน
+  useEffect(() => {
+    if (orchard) {
+      setForm(prev => ({ ...prev, grade: defaultGrade }));
+    }
+  }, [orchard, defaultGrade]);
 
   const loadData = async () => {
     try {
@@ -88,7 +106,7 @@ export default function SalesClient() {
       });
       setForm({
         date: new Date().toISOString().split('T')[0],
-        grade: 'เบอร์หัว',
+        grade: defaultGrade,
         weight: 0,
         pricePerKg: 0,
         cutRate: 5,
@@ -292,7 +310,7 @@ export default function SalesClient() {
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ประเภท</label>
                   <select value={form.grade}
-                    onChange={(e) => setForm({ ...form, grade: e.target.value as DurianGrade })}
+                    onChange={(e) => setForm({ ...form, grade: e.target.value as FruitGrade })}
                     className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white">
                     {GRADES.map((g) => (
                       <option key={g} value={g}>{g}</option>
