@@ -31,6 +31,8 @@ export default function FungicidePage() {
         Icon={Sprout}
         accent="emerald"
         unitOptions={['liter', 'cc']}
+        showGroup={true}
+        groupInputMode="text"
       />
     </Suspense>
   );

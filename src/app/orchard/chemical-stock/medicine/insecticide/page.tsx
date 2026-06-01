@@ -31,6 +31,8 @@ export default function InsecticidePage() {
         Icon={Bug}
         accent="rose"
         unitOptions={['liter', 'cc']}
+        showGroup={true}
+        groupInputMode="text"
       />
     </Suspense>
   );

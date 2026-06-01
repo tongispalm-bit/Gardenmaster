@@ -44,6 +44,7 @@ const EMPTY_FORM = {
   amount: '',
   unit: 'liter' as MedicineUnit,
   group: 1,
+  groupText: '', // สำหรับโหมดกรอกข้อมูลเอง
   price: '',
   purchaseDate: new Date().toISOString().split('T')[0],
   photos: [] as string[],
@@ -112,6 +113,8 @@ type Props = {
   groupLabel?: string;
   /** ถ้าระบุ → แสดงเป็น dropdown แทน 9 ปุ่ม + ใช้รายการนี้แทนเลข 1-9 */
   groupOptions?: { value: number; label: string }[];
+  /** โหมดการกรอกกลุ่ม: 'buttons' (ปุ่ม 9 กลุ่ม) หรือ 'text' (กรอกข้อมูลเอง) */
+  groupInputMode?: 'buttons' | 'text';
   /** จำกัดหน่วยปริมาณใน dropdown (default: ทั้งหมด ลิตร/ซีซี/กิโล/กรัม) */
   unitOptions?: MedicineUnit[];
 };
@@ -153,6 +156,7 @@ export default function StockListClient({
   showGroup = true,
   groupLabel = 'กลุ่มยา',
   groupOptions,
+  groupInputMode = 'buttons',
   unitOptions = ['liter', 'cc', 'kg', 'gram'],
 }: Props) {
   const router = useRouter();
@@ -206,15 +210,27 @@ export default function StockListClient({
 
   const filteredItems = items;
 
-  // จัดกลุ่มตาม group (1-9) แล้วเรียงจากกลุ่มน้อย → มาก
+  // จัดกลุ่มตาม group (1-9) หรือ groupText (ถ้าใช้โหมด text) แล้วเรียงจากกลุ่มน้อย → มาก
   const groupedItems = useMemo(() => {
-    const map = new Map<number, StockItem[]>();
-    for (const it of filteredItems) {
-      if (!map.has(it.group)) map.set(it.group, []);
-      map.get(it.group)!.push(it);
+    if (groupInputMode === 'text') {
+      // จัดกลุ่มตาม groupText
+      const map = new Map<string, StockItem[]>();
+      for (const it of filteredItems) {
+        const key = (it as StockItem & { groupText?: string }).groupText || 'ไม่ระบุกลุ่ม';
+        if (!map.has(key)) map.set(key, []);
+        map.get(key)!.push(it);
+      }
+      return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], 'th'));
+    } else {
+      // จัดกลุ่มตาม group number
+      const map = new Map<number, StockItem[]>();
+      for (const it of filteredItems) {
+        if (!map.has(it.group)) map.set(it.group, []);
+        map.get(it.group)!.push(it);
+      }
+      return Array.from(map.entries()).sort((a, b) => (a[0] as number) - (b[0] as number));
     }
-    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
-  }, [filteredItems]);
+  }, [filteredItems, groupInputMode]);
 
   // ชื่อยาที่เคยกรอกแล้ว (unique) — ใช้ใน datalist สำหรับเลือกเมื่อกรอกซ้ำ
   const existingNames = useMemo(() => {
@@ -348,6 +364,7 @@ export default function StockListClient({
       amount: String(it.amount),
       unit: it.unit,
       group: it.group,
+      groupText: (it as StockItem & { groupText?: string }).groupText ?? '',
       price: it.price !== undefined ? String(it.price) : '',
       purchaseDate: it.purchaseDate || new Date(it.createdAt).toISOString().split('T')[0],
       photos: it.photos ?? [],
@@ -412,6 +429,7 @@ export default function StockListClient({
         amount: amountNum,
         unit: form.unit,
         group: Number(form.group),
+        ...(groupInputMode === 'text' && form.groupText.trim() ? { groupText: form.groupText.trim() } : {}),
         price: priceNum,
         purchaseDate: form.purchaseDate,
         photos: form.photos,
@@ -789,7 +807,7 @@ export default function StockListClient({
                 </div>
               </div>
 
-              {/* กลุ่มยา — ถ้ามี groupOptions ใช้ dropdown / ถ้าไม่มีใช้ 9 ปุ่มแสดงสี (ซ่อนถ้า showGroup=false) */}
+              {/* กลุ่มยา — รองรับ 3 โหมด: dropdown, ปุ่ม 9 กลุ่ม, หรือ text input (ซ่อนถ้า showGroup=false) */}
               {showGroup && (
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">{groupLabel}</label>
@@ -803,6 +821,14 @@ export default function StockListClient({
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
+                  ) : groupInputMode === 'text' ? (
+                    <input
+                      type="text"
+                      value={form.groupText}
+                      onChange={e => setForm({ ...form, groupText: e.target.value })}
+                      placeholder="กรอกชื่อกลุ่มยา เช่น กลุ่ม A, ยาฉีดพ่น..."
+                      className={`w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ${a.ring} text-slate-800 dark:text-white text-sm`}
+                    />
                   ) : (
                     <div className="grid grid-cols-9 gap-1 mb-2">
                       {Array.from({ length: 9 }, (_, i) => i + 1).map(n => {

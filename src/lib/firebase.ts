@@ -892,6 +892,8 @@ export type MedicineItemRecord = {
   unit: MedicineUnit;
   /** กลุ่มยา 1-9 */
   group: number;
+  /** ชื่อกลุ่มยา (สำหรับโหมดกรอกข้อมูลเอง) */
+  groupText?: string;
   /** ราคา (บาท) */
   price?: number;
   /** วันที่ซื้อ (YYYY-MM-DD) — ใช้คำนวณรายจ่ายเดือน/ปี */
