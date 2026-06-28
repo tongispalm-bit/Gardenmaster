@@ -475,9 +475,9 @@ export default function HospitalClient() {
               {/* อาการ */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">อาการที่พบ <span className="text-red-500">*</span></label>
-                <textarea rows={2} value={form.symptoms}
+                <textarea rows={3} value={form.symptoms}
                   onChange={e => setForm({ ...form, symptoms: e.target.value })}
-                  placeholder="เช่น ใบเหลือง รากเน่า มีแมลง..."
+                  placeholder="เช่น เชื่อว่าไฟทอป, ใบเหลือง, รากเน่า, มีแมลง..."
                   className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-red-500 text-slate-800 dark:text-white text-sm resize-none" />
               </div>
 
@@ -485,21 +485,25 @@ export default function HospitalClient() {
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
                   รูปภาพอาการ ({form.photos.length}/6)
+                  {form.photos.length === 0 && <span className="text-red-500 ml-1">(ไม่บังคับ)</span>}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {form.photos.map((p, i) => (
-                    <div key={i} className="relative w-16 h-16">
-                      <img src={p} alt="" className="w-full h-full object-cover rounded-xl border border-slate-200 dark:border-slate-600" />
-                      <button onClick={() => removePhoto(i)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">
+                    <div key={i} className="relative w-20 h-20">
+                      <img src={p} alt="" className="w-full h-full object-cover rounded-lg border-2 border-slate-200 dark:border-slate-600" />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(i)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs shadow-md"
+                      >
                         ✕
                       </button>
                     </div>
                   ))}
                   {form.photos.length < 6 && (
-                    <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-red-400 hover:text-red-400 transition-colors cursor-pointer">
-                      <Camera size={18} />
-                      <span className="text-[9px] mt-0.5">เพิ่ม</span>
+                    <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-red-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors cursor-pointer">
+                      <Camera size={20} />
+                      <span className="text-[10px] mt-1 font-bold">เพิ่มรูป</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -514,35 +518,57 @@ export default function HospitalClient() {
                     </label>
                   )}
                 </div>
+                {form.photos.length > 0 && (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                    💡 กดที่ปุ่ม ✕ เพื่อลบรูปภาพ
+                  </p>
+                )}
               </div>
 
               {/* ยาที่ใช้ */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400">รายการยาที่ใช้</label>
-                  <button onClick={addMedicine} className="text-xs text-red-500 font-bold flex items-center gap-1">
-                    <Plus size={12} /> เพิ่มยา
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400">รายการยาที่ใช้รักษา</label>
+                  <button
+                    type="button"
+                    onClick={addMedicine}
+                    className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-bold flex items-center gap-1 transition-colors"
+                  >
+                    <Plus size={14} /> เพิ่มยา
                   </button>
                 </div>
                 <div className="space-y-2">
                   {form.medicines.map((m, i) => (
                     <div key={i} className="flex gap-2 items-center">
-                      <input type="text" value={m.name}
+                      <input
+                        type="text"
+                        value={m.name}
                         onChange={e => updateMedicine(i, 'name', e.target.value)}
-                        placeholder="ชื่อยา"
-                        className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-red-500 text-slate-800 dark:text-white text-sm" />
-                      <input type="text" value={m.amount}
+                        placeholder="ชื่อยา / ปุ๋ย"
+                        className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-red-500 text-slate-800 dark:text-white text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={m.amount}
                         onChange={e => updateMedicine(i, 'amount', e.target.value)}
                         placeholder="ปริมาณ"
-                        className="w-24 p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-red-500 text-slate-800 dark:text-white text-sm" />
+                        className="w-28 p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-red-500 text-slate-800 dark:text-white text-sm"
+                      />
                       {form.medicines.length > 1 && (
-                        <button onClick={() => removeMedicine(i)} className="text-slate-400 hover:text-red-500">
-                          <Trash2 size={14} />
+                        <button
+                          type="button"
+                          onClick={() => removeMedicine(i)}
+                          className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       )}
                     </div>
                   ))}
                 </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+                  💡 สามารถเพิ่มยาได้หลายรายการ (ไม่บังคับ)
+                </p>
               </div>
 
               {/* ผลการรักษา + สถานะ */}
@@ -603,14 +629,23 @@ export default function HospitalClient() {
           </div>
         )}
 
-        {/* ── ประวัติแยกตามต้น ── */}
-        <h2 className="font-bold text-slate-800 dark:text-white text-sm">
-          ประวัติการป่วย ({records.length} รายการ)
-        </h2>
+        {/* ── ประวัติการรักษา ── */}
+        <div className="flex items-center justify-between">
+          <h2 className="font-bold text-slate-800 dark:text-white text-sm">
+            📋 ประวัติการรักษา
+          </h2>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            ({filteredRecords.length} รายการ)
+          </span>
+        </div>
 
-        {records.length === 0 ? (
-          <div className="text-center py-10 text-slate-500 dark:text-slate-400 text-sm">
-            ยังไม่มีบันทึก
+        {filteredRecords.length === 0 ? (
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8">
+            <div className="text-center text-slate-400 dark:text-slate-500">
+              <Stethoscope size={48} className="mx-auto mb-3 opacity-50" />
+              <p className="text-sm font-bold">ยังไม่มีบันทึกการรักษา</p>
+              <p className="text-xs mt-1">กดปุ่ม "บันทึกอาการใหม่" เพื่อเริ่มต้น</p>
+            </div>
           </div>
         ) : (
           Object.entries(byTree).map(([treeNum, treeRecords]) => (
