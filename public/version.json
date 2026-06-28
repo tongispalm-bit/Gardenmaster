@@ -1,5 +1,5 @@
 {
-  "version": "4.0.0",
-  "buildTime": "2026-06-28T20:30:00Z",
-  "message": "เพิ่มหน้าข้อมูลต้น พร้อม popup แบบ bottom sheet - cache v4"
+  "version": "5.0.0",
+  "buildTime": "2026-06-28T21:00:00Z",
+  "message": "TreeInfoModal - CENTERED POPUP กลางจอ (มือถือ+desktop) - cache v5"
 }
