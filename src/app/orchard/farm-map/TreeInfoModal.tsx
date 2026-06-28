@@ -107,12 +107,12 @@ export default function TreeInfoModal({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-[9998] bg-black/60 flex items-center justify-center p-4"
+        className="fixed inset-0 z-[9998] bg-black/60 flex items-center justify-center p-3 sm:p-4"
         onClick={onClose}
       >
-        {/* Modal Content - Centered Popup */}
+        {/* Modal Content - Centered Popup (mobile optimized) */}
         <div 
-          className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh] animate-fade-in"
+          className="bg-white dark:bg-slate-800 w-full max-w-[95vw] sm:max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[85vh] sm:max-h-[90vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
