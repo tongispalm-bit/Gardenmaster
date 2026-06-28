@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
-  "buildTime": "2026-06-28T00:00:00Z",
-  "message": "เพิ่ม Ribbon Tabs ในข้อมูลต้น + แก้ไขการอัปโหลดรูปในห้องพยาบาล"
+  "version": "4.0.0",
+  "buildTime": "2026-06-28T20:30:00Z",
+  "message": "เพิ่มหน้าข้อมูลต้น พร้อม popup แบบ bottom sheet - cache v4"
 }

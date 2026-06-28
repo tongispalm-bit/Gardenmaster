@@ -1,7 +1,7 @@
 // Garden Master — Service Worker
 // Strategy: cache-first for app shell, network-first for Firestore-backed pages
 
-const CACHE_VERSION = 'gm-v3'; // เพิ่ม version เพื่อบังคับ reload
+const CACHE_VERSION = 'gm-v4'; // เพิ่ม version เพื่อบังคับ reload
 const APP_SHELL = `${CACHE_VERSION}-shell`;
 const RUNTIME = `${CACHE_VERSION}-runtime`;
 
@@ -18,6 +18,8 @@ const PRECACHE_URLS = [
   '/orchard/upgrade/',
   '/orchard/sales/',
   '/orchard/hospital/',
+  '/orchard/tree-info/',
+  '/orchard/farm-map/',
   '/orchard/farm-map/',
   '/orchard/chemical-stock/',
   '/orchard/expense-summary/',
