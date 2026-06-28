@@ -101,27 +101,32 @@ export default function TreeInfoModal({
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-[9999] bg-black/60 flex items-end sm:items-center justify-center overflow-y-auto"
-      onClick={onClose}
-      style={{ 
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
-      }}
-    >
+    <>
+      {/* Backdrop */}
       <div 
-        className="bg-white dark:bg-slate-800 w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl shadow-2xl border-t border-slate-200 dark:border-slate-700 flex flex-col max-h-[92vh] sm:max-h-[90vh] sm:my-4 animate-slide-up"
+        className="fixed inset-0 z-[9998] bg-black/60"
+        onClick={onClose}
+      />
+      
+      {/* Modal Content - Mobile: Bottom Sheet, Desktop: Centered */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:bottom-auto z-[9999] bg-white dark:bg-slate-800 w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl shadow-2xl border-t sm:border border-slate-200 dark:border-slate-700 flex flex-col max-h-[85vh] sm:max-h-[90vh] animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Handle bar สำหรับมือถือ */}
+        <div className="w-full pt-2 pb-1 flex justify-center shrink-0 sm:hidden">
+          <div className="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
+        </div>
+        
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 sm:rounded-t-2xl rounded-t-3xl shrink-0 relative">
-          {/* Handle bar สำหรับมือถือ */}
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full sm:hidden" />
-          
-          <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate pr-2 pt-3 sm:pt-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0">
+          <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate pr-2">
             ข้อมูลต้น R{editing.row}C{editing.col}
           </h2>
-          <button onClick={onClose} className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 shrink-0 active:scale-95 transition-transform">
+          <button 
+            onClick={onClose} 
+            className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 shrink-0 active:scale-95 transition-transform"
+          >
             <X size={20} />
           </button>
         </div>
@@ -514,6 +519,6 @@ export default function TreeInfoModal({
           onClose={() => setShowLightbox(false)}
         />
       )}
-    </div>
+    </>
   );
 }
