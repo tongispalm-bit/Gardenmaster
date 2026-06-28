@@ -102,41 +102,48 @@ export default function TreeInfoModal({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-[9999] bg-black/60 flex items-end sm:items-center justify-center overflow-y-auto"
       onClick={onClose}
+      style={{ 
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+      }}
     >
       <div 
-        className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh] my-4"
+        className="bg-white dark:bg-slate-800 w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl shadow-2xl border-t border-slate-200 dark:border-slate-700 flex flex-col max-h-[92vh] sm:max-h-[90vh] sm:my-4 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-t-2xl shrink-0">
-          <h2 className="text-base font-bold text-slate-800 dark:text-white truncate pr-2">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 sm:rounded-t-2xl rounded-t-3xl shrink-0 relative">
+          {/* Handle bar สำหรับมือถือ */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full sm:hidden" />
+          
+          <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate pr-2 pt-3 sm:pt-0">
             ข้อมูลต้น R{editing.row}C{editing.col}
           </h2>
-          <button onClick={onClose} className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 shrink-0">
+          <button onClick={onClose} className="p-2 -mr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 shrink-0 active:scale-95 transition-transform">
             <X size={20} />
           </button>
         </div>
 
         {/* Ribbon Tabs */}
-        <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30 shrink-0">
+        <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30 shrink-0 sticky top-0 z-10">
           <button
             onClick={() => setModalTab('info')}
-            className={`flex-1 py-3 text-sm font-bold transition-all whitespace-nowrap ${
+            className={`flex-1 py-3 px-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
               modalTab === 'info'
                 ? 'text-amber-600 dark:text-amber-400 border-b-2 border-amber-500 bg-white dark:bg-slate-800'
-                : 'text-slate-500 dark:text-slate-400 active:text-slate-700 dark:active:text-slate-300'
+                : 'text-slate-500 dark:text-slate-400 active:text-slate-700 dark:active:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800/50'
             }`}
           >
             📋 ข้อมูลต้น
           </button>
           <button
             onClick={() => setModalTab('history')}
-            className={`flex-1 py-3 text-sm font-bold transition-all whitespace-nowrap ${
+            className={`flex-1 py-3 px-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
               modalTab === 'history'
                 ? 'text-red-600 dark:text-red-400 border-b-2 border-red-500 bg-white dark:bg-slate-800'
-                : 'text-slate-500 dark:text-slate-400 active:text-slate-700 dark:active:text-slate-300'
+                : 'text-slate-500 dark:text-slate-400 active:text-slate-700 dark:active:text-slate-300 active:bg-slate-100 dark:active:bg-slate-800/50'
             }`}
           >
             🏥 ประวัติการป่วย {treeRecords.length > 0 && `(${treeRecords.length})`}
@@ -144,7 +151,7 @@ export default function TreeInfoModal({
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 pb-safe">
           {modalTab === 'info' ? (
             // ── แท็บ: ข้อมูลต้น ──
             <div className="space-y-2.5">
@@ -271,7 +278,7 @@ export default function TreeInfoModal({
                           router.push(`/orchard/hospital?id=${orchardId}&viewTreeId=${existingTree.id}`);
                         }}
                         disabled={saving}
-                        className="w-full py-2.5 rounded-xl font-bold text-sm border disabled:opacity-50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                        className="w-full py-3 sm:py-2.5 rounded-xl font-bold text-sm border disabled:opacity-50 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 active:bg-blue-200 dark:active:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 transition-colors active:scale-95"
                       >
                         📋 ดูประวัติการป่วย ({treeRecords.length} รายการ)
                       </button>
@@ -283,7 +290,7 @@ export default function TreeInfoModal({
                           router.push(`/orchard/hospital?id=${orchardId}&treeId=${existingTree.id}`);
                         }}
                         disabled={saving}
-                        className="w-full py-2.5 rounded-xl font-bold text-sm border disabled:opacity-50 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800"
+                        className="w-full py-3 sm:py-2.5 rounded-xl font-bold text-sm border disabled:opacity-50 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 active:bg-red-200 dark:active:bg-red-900/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 transition-colors active:scale-95"
                       >
                         🏥 ส่งห้องพยาบาล
                       </button>
@@ -317,7 +324,7 @@ export default function TreeInfoModal({
                       } catch { alert('เกิดข้อผิดพลาด'); }
                     }}
                     disabled={saving}
-                    className="w-full py-2.5 rounded-xl font-bold text-sm border disabled:opacity-50 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800"
+                    className="w-full py-3 sm:py-2.5 rounded-xl font-bold text-sm border disabled:opacity-50 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 active:bg-red-200 dark:active:bg-red-900/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 transition-colors active:scale-95"
                   >
                     🏥 ส่งห้องพยาบาล
                   </button>
@@ -328,24 +335,24 @@ export default function TreeInfoModal({
                   <button 
                     onClick={onDelete} 
                     disabled={saving}
-                    className="w-full py-2 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="w-full py-2.5 sm:py-2 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 active:bg-rose-200 dark:active:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-50 transition-colors active:scale-95"
                   >
                     <Trash2 size={14} /> ลบต้นนี้
                   </button>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   <button 
                     onClick={onClose} 
                     disabled={saving}
-                    className="flex-1 py-2.5 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold disabled:opacity-50"
+                    className="flex-1 py-3 sm:py-2.5 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 active:bg-slate-300 dark:active:bg-slate-500 text-slate-700 dark:text-slate-200 rounded-xl font-bold disabled:opacity-50 transition-colors active:scale-95"
                   >
                     ยกเลิก
                   </button>
                   <button 
                     onClick={handleSaveClick} 
                     disabled={saving}
-                    className="flex-1 py-2.5 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold disabled:opacity-50"
+                    className="flex-1 py-3 sm:py-2.5 text-sm bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white rounded-xl font-bold disabled:opacity-50 transition-colors active:scale-95"
                   >
                     {saving ? 'กำลังบันทึก...' : 'บันทึก'}
                   </button>
@@ -373,7 +380,7 @@ export default function TreeInfoModal({
                       onClose();
                       router.push(`/orchard/hospital?id=${orchardId}&treeId=${existingTree.id}`);
                     }}
-                    className="mt-3 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl font-bold text-xs"
+                    className="mt-3 px-4 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 active:bg-red-200 dark:active:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl font-bold text-xs transition-colors active:scale-95"
                   >
                     🏥 บันทึกอาการ
                   </button>
@@ -488,7 +495,7 @@ export default function TreeInfoModal({
                       onClose();
                       router.push(`/orchard/hospital?id=${orchardId}&treeId=${existingTree.id}`);
                     }}
-                    className="w-full py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl font-bold text-sm"
+                    className="w-full py-3 sm:py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 active:bg-red-200 dark:active:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl font-bold text-sm transition-colors active:scale-95"
                   >
                     🏥 บันทึกอาการใหม่
                   </button>
