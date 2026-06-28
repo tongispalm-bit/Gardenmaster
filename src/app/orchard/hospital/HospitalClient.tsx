@@ -118,29 +118,70 @@ export default function HospitalClient() {
     }
   };
 
-  // Photo handler — convert to base64
+  // Photo handler — compress + convert to base64
   const handlePhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const remaining = 6 - form.photos.length;
     const toProcess = files.slice(0, remaining);
     
-    // รอให้ทุกไฟล์โหลดเสร็จก่อน
+    // Compress image helper
+    const compressImage = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            
+            // Resize — max width/height = 800px เพื่อลดขนาด
+            let width = img.width;
+            let height = img.height;
+            const maxSize = 800;
+            
+            if (width > height && width > maxSize) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            } else if (height > maxSize) {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              reject(new Error('Canvas context error'));
+              return;
+            }
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Compress — quality 0.7 (70%) สำหรับ JPEG
+            const compressed = canvas.toDataURL('image/jpeg', 0.7);
+            resolve(compressed);
+          };
+          img.onerror = reject;
+          img.src = event.target?.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    };
+    
+    // Process all photos
     const newPhotos: string[] = [];
     for (const file of toProcess) {
       try {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        newPhotos.push(base64);
+        const compressed = await compressImage(file);
+        newPhotos.push(compressed);
       } catch (err) {
-        console.error('เกิดข้อผิดพลาดในการอ่านไฟล์:', err);
+        console.error('เกิดข้อผิดพลาดในการประมวลผลรูปภาพ:', err);
+        alert(`ไม่สามารถประมวลผล ${file.name} ได้`);
       }
     }
     
-    // Update state ครั้งเดียวหลังโหลดเสร็จทั้งหมด
+    // Update state
     if (newPhotos.length > 0) {
       setForm(prev => ({
         ...prev,
@@ -177,10 +218,23 @@ export default function HospitalClient() {
   };
 
   const handleSubmit = async () => {
-    if (!form.treeId || !form.symptoms) return;
+    if (!form.treeId || !form.symptoms) {
+      alert('⚠️ กรุณาเลือกต้นและระบุอาการ');
+      return;
+    }
+    
     setSaving(true);
     try {
       const now = Date.now();
+      
+      // ตรวจสอบขนาดรูป — เตือนถ้ารูปรวมกันใหญ่เกิน 800KB
+      const totalPhotoSize = form.photos.reduce((sum, p) => sum + p.length, 0);
+      const sizeInKB = Math.round(totalPhotoSize / 1024);
+      
+      if (sizeInKB > 800) {
+        console.warn(`⚠️ รูปภาพมีขนาดรวม ${sizeInKB} KB — อาจส่งผลต่อประสิทธิภาพ`);
+      }
+      
       const payload = {
         orchardId,
         treeId: form.treeId,
@@ -223,8 +277,6 @@ export default function HospitalClient() {
       }
 
       // ── 2) คำนวณ "ประวัติล่าสุด" ของต้นนี้ จาก local records ──
-      // (ไม่ refetch จาก server เพื่อหลีกเลี่ยง eventual consistency)
-      // สร้าง list บันทึกหลังการแก้ไข
       const newRecord: HospitalRecord = {
         id: savedRecordId,
         ...payload,
@@ -245,16 +297,6 @@ export default function HospitalClient() {
         ? 'watch'
         : 'normal';
 
-      // eslint-disable-next-line no-console
-      console.log('[Hospital] Sync tree from latest record', {
-        treeId: form.treeId,
-        savedRecordId,
-        latestId: latest?.id,
-        latestStatus: latest?.status,
-        latestCreatedAt: latest?.createdAt,
-        expectedTreeStatus,
-      });
-
       await updateTreeProfile(form.treeId, {
         status: expectedTreeStatus,
         updatedAt: now,
@@ -268,13 +310,21 @@ export default function HospitalClient() {
 
       // ── 5) แสดงข้อความยืนยัน ──
       alert(
-        expectedTreeStatus === 'normal'
-          ? `บันทึกสำเร็จ\nต้น ${form.treeNumber} → สถานะปกติ 🌳`
-          : `บันทึกสำเร็จ\nต้น ${form.treeNumber} → เฝ้าระวัง 🌲`
+        `✅ บันทึกสำเร็จ!\n\nต้น ${form.treeNumber}\n→ ${expectedTreeStatus === 'normal' ? 'สถานะปกติ 🌳' : 'เฝ้าระวัง 🌲'}`
       );
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('[Hospital] save failed', e);
-      alert('บันทึกไม่สำเร็จ! โปรดลองใหม่');
+      
+      // แสดง error message ที่เข้าใจง่าย
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      
+      if (errorMsg.includes('size') || errorMsg.includes('too large')) {
+        alert('❌ บันทึกไม่สำเร็จ!\n\nรูปภาพมีขนาดใหญ่เกินไป\nลองลดจำนวนรูปหรือใช้รูปที่เล็กกว่า');
+      } else if (errorMsg.includes('network') || errorMsg.includes('offline')) {
+        alert('❌ บันทึกไม่สำเร็จ!\n\nไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้\nกรุณาตรวจสอบการเชื่อมต่อ');
+      } else {
+        alert(`❌ บันทึกไม่สำเร็จ!\n\n${errorMsg}\n\nลองลดจำนวนรูปภาพหรือรีเฟรชหน้าเว็บ`);
+      }
     } finally {
       setSaving(false);
     }
@@ -485,23 +535,26 @@ export default function HospitalClient() {
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
                   รูปภาพอาการ ({form.photos.length}/6)
-                  {form.photos.length === 0 && <span className="text-red-500 ml-1">(ไม่บังคับ)</span>}
+                  {form.photos.length === 0 && <span className="text-slate-400 ml-1">(ไม่บังคับ)</span>}
+                  {form.photos.length > 0 && (
+                    <span className="text-emerald-500 ml-1">✓ {form.photos.length} รูป</span>
+                  )}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {form.photos.map((p, i) => (
-                    <div key={i} className="relative w-20 h-20">
-                      <img src={p} alt="" className="w-full h-full object-cover rounded-lg border-2 border-slate-200 dark:border-slate-600" />
+                    <div key={i} className="relative w-20 h-20 group">
+                      <img src={p} alt="" className="w-full h-full object-cover rounded-lg border-2 border-slate-200 dark:border-slate-600 group-hover:border-red-400 transition-colors" />
                       <button
                         type="button"
                         onClick={() => removePhoto(i)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs shadow-md"
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         ✕
                       </button>
                     </div>
                   ))}
                   {form.photos.length < 6 && (
-                    <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-red-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors cursor-pointer">
+                    <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-red-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all cursor-pointer">
                       <Camera size={20} />
                       <span className="text-[10px] mt-1 font-bold">เพิ่มรูป</span>
                       <input
@@ -510,17 +563,18 @@ export default function HospitalClient() {
                         multiple
                         className="hidden"
                         onChange={(e) => {
-                          handlePhotos(e).catch(err => 
-                            console.error('เกิดข้อผิดพลาดในการเพิ่มรูปภาพ:', err)
-                          );
+                          handlePhotos(e).catch(err => {
+                            console.error('เกิดข้อผิดพลาดในการเพิ่มรูปภาพ:', err);
+                            alert('❌ ไม่สามารถเพิ่มรูปได้\nลองใช้รูปที่เล็กกว่า');
+                          });
                         }}
                       />
                     </label>
                   )}
                 </div>
                 {form.photos.length > 0 && (
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                    💡 กดที่ปุ่ม ✕ เพื่อลบรูปภาพ
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+                    💡 ชี้เมาส์ที่รูปและกดปุ่ม ✕ เพื่อลบ · รูปจะถูกย่อขนาดอัตโนมัติเพื่อประหยัดพื้นที่
                   </p>
                 )}
               </div>
