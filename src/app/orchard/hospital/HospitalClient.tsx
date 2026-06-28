@@ -21,6 +21,7 @@ import {
 } from '@/lib/firebase';
 import { Stethoscope, Plus, Trash2, X, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 import SubPageHeader from '../_components/SubPageHeader';
+import ImageLightbox from '../farm-map/ImageLightbox';
 
 const SEVERITY_LABEL: Record<Severity, string> = {
   mild: 'เล็กน้อย',
@@ -68,9 +69,15 @@ export default function HospitalClient() {
   const [records, setRecords] = useState<HospitalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Lightbox state
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   // Form state
   const [form, setForm] = useState(() => ({
@@ -95,10 +102,18 @@ export default function HospitalClient() {
       setRecords(recordData);
 
       // Auto-select ต้นถ้ามี treeId จาก query string (เปิดฟอร์มบันทึกใหม่)
-      if (preselectedTreeId && treeData.length > 0) {
-        const preTree = treeData.find(t => t.id === preselectedTreeId);
-        if (preTree) {
-          setForm(prev => ({ ...prev, treeId: preTree.id, treeNumber: preTree.treeNumber }));
+      if (preselectedTreeId) {
+        if (treeData.length > 0) {
+          const preTree = treeData.find(t => t.id === preselectedTreeId);
+          if (preTree) {
+            setForm(prev => ({ ...prev, treeId: preTree.id, treeNumber: preTree.treeNumber }));
+            setShowForm(true);
+          } else {
+            // ต้นอาจยังไม่ปรากฏใน list (timing issue) — เปิดฟอร์มแบบไม่ preselect
+            setShowForm(true);
+          }
+        } else {
+          // ยังไม่มีต้นเลยในระบบ — เปิดฟอร์มแบบไม่ preselect
           setShowForm(true);
         }
       }
@@ -118,78 +133,131 @@ export default function HospitalClient() {
     }
   };
 
-  // Photo handler — compress + convert to base64
-  const handlePhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const remaining = 6 - form.photos.length;
-    const toProcess = files.slice(0, remaining);
+  // Photo handler — iOS Safari + Android compatible
+  const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     
-    // Compress image helper
-    const compressImage = (file: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            
-            // Resize — max width/height = 800px เพื่อลดขนาด
-            let width = img.width;
-            let height = img.height;
-            const maxSize = 800;
-            
-            if (width > height && width > maxSize) {
-              height = (height * maxSize) / width;
-              width = maxSize;
-            } else if (height > maxSize) {
-              width = (width * maxSize) / height;
-              height = maxSize;
+    const currentSize = form.photos.reduce((sum, p) => sum + p.length, 0);
+    const currentKB = Math.round(currentSize / 1024);
+    const remaining = Math.min(3 - form.photos.length, files.length);
+    
+    if (remaining <= 0) {
+      alert('⚠️ เพิ่มรูปได้สูงสุด 3 รูปเท่านั้น');
+      e.target.value = '';
+      return;
+    }
+    
+    if (currentKB > 600) {
+      alert('⚠️ รูปเต็มแล้ว!');
+      e.target.value = '';
+      return;
+    }
+    
+    setProcessing(true);
+    
+    // Process first file only (iOS + Android compat)
+    const file = files[0];
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert('❌ กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+      setProcessing(false);
+      e.target.value = '';
+      return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = (evt) => {
+      const img = new Image();
+      
+      // Fix iOS orientation issues
+      img.crossOrigin = 'anonymous';
+      
+      img.onload = () => {
+        try {
+          // Calculate target size (increase from 400 to 600 for better quality)
+          let w = img.width;
+          let h = img.height;
+          const max = 600;
+          
+          if (w > max || h > max) {
+            if (w > h) {
+              h = (h * max) / w;
+              w = max;
+            } else {
+              w = (w * max) / h;
+              h = max;
             }
-            
-            canvas.width = width;
-            canvas.height = height;
-            
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-              reject(new Error('Canvas context error'));
-              return;
-            }
-            
-            ctx.drawImage(img, 0, 0, width, height);
-            
-            // Compress — quality 0.7 (70%) สำหรับ JPEG
-            const compressed = canvas.toDataURL('image/jpeg', 0.7);
-            resolve(compressed);
-          };
-          img.onerror = reject;
-          img.src = event.target?.result as string;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+          }
+          
+          // Create canvas
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(w);
+          canvas.height = Math.round(h);
+          
+          const ctx = canvas.getContext('2d', { alpha: false });
+          if (!ctx) {
+            throw new Error('Canvas not supported');
+          }
+          
+          // Enable image smoothing for better quality
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          
+          // Draw white background + image
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Convert to JPEG with increased quality (0.5 -> 0.7)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          const sizeKB = Math.round((dataUrl.length * 3) / 4 / 1024);
+          
+          console.log(`📸 Photo processed: ${w}x${h}px, ${sizeKB}KB`);
+          
+          // Check total size (increased limit to 700KB)
+          if (currentKB + sizeKB > 700) {
+            alert('⚠️ รูปรวมจะเกิน 700KB\nลองใช้รูปที่เล็กกว่า');
+            setProcessing(false);
+            e.target.value = '';
+            return;
+          }
+          
+          // Update form
+          setForm(prev => ({
+            ...prev,
+            photos: [...prev.photos, dataUrl]
+          }));
+          
+          setProcessing(false);
+          e.target.value = '';
+          
+        } catch (err) {
+          console.error('Canvas error:', err);
+          alert('❌ ไม่สามารถประมวลผลรูปได้\nลองรูปอื่นหรือเปลี่ยนเบราว์เซอร์');
+          setProcessing(false);
+          e.target.value = '';
+        }
+      };
+      
+      img.onerror = () => {
+        alert('❌ ไม่สามารถโหลดรูปได้\nรูปอาจเสียหายหรือเป็นรูปแบบที่ไม่รองรับ');
+        setProcessing(false);
+        e.target.value = '';
+      };
+      
+      img.src = evt.target?.result as string;
     };
     
-    // Process all photos
-    const newPhotos: string[] = [];
-    for (const file of toProcess) {
-      try {
-        const compressed = await compressImage(file);
-        newPhotos.push(compressed);
-      } catch (err) {
-        console.error('เกิดข้อผิดพลาดในการประมวลผลรูปภาพ:', err);
-        alert(`ไม่สามารถประมวลผล ${file.name} ได้`);
-      }
-    }
+    reader.onerror = () => {
+      alert('❌ ไม่สามารถอ่านไฟล์ได้\nกรุณาตรวจสอบสิทธิ์การเข้าถึงไฟล์');
+      setProcessing(false);
+      e.target.value = '';
+    };
     
-    // Update state
-    if (newPhotos.length > 0) {
-      setForm(prev => ({
-        ...prev,
-        photos: [...prev.photos, ...newPhotos],
-      }));
-    }
-    
-    e.target.value = '';
+    reader.readAsDataURL(file);
   };
 
   const removePhoto = (idx: number) => {
@@ -223,17 +291,30 @@ export default function HospitalClient() {
       return;
     }
     
+    // ตรวจสอบขนาดรวมก่อนบันทึก
+    const totalPhotoSize = form.photos.reduce((sum, p) => sum + p.length, 0);
+    const sizeInKB = Math.round(totalPhotoSize / 1024);
+    const estimatedDocSize = sizeInKB + 50; // +50KB สำหรับข้อมูลอื่นๆ
+    
+    console.log(`📊 Document size estimate: ${estimatedDocSize} KB (photos: ${sizeInKB} KB)`);
+    
+    // Firestore limit = 1MB (1024KB) — เตือนที่ 700KB (เพื่อความปลอดภัย)
+    if (estimatedDocSize > 700) {
+      const confirmed = confirm(
+        `⚠️ ข้อมูลมีขนาด ${estimatedDocSize} KB\n\n` +
+        `Firestore อนุญาตสูงสุด 1MB (1024 KB)\n` +
+        `แนะนำให้ลดจำนวนรูปเหลือ 2 รูป\n\n` +
+        `ต้องการบันทึกต่อหรือไม่?`
+      );
+      if (!confirmed) {
+        setSaving(false);
+        return;
+      }
+    }
+    
     setSaving(true);
     try {
       const now = Date.now();
-      
-      // ตรวจสอบขนาดรูป — เตือนถ้ารูปรวมกันใหญ่เกิน 800KB
-      const totalPhotoSize = form.photos.reduce((sum, p) => sum + p.length, 0);
-      const sizeInKB = Math.round(totalPhotoSize / 1024);
-      
-      if (sizeInKB > 800) {
-        console.warn(`⚠️ รูปภาพมีขนาดรวม ${sizeInKB} KB — อาจส่งผลต่อประสิทธิภาพ`);
-      }
       
       const payload = {
         orchardId,
@@ -318,12 +399,24 @@ export default function HospitalClient() {
       // แสดง error message ที่เข้าใจง่าย
       const errorMsg = e instanceof Error ? e.message : String(e);
       
-      if (errorMsg.includes('size') || errorMsg.includes('too large')) {
-        alert('❌ บันทึกไม่สำเร็จ!\n\nรูปภาพมีขนาดใหญ่เกินไป\nลองลดจำนวนรูปหรือใช้รูปที่เล็กกว่า');
+      if (errorMsg.includes('size') || errorMsg.includes('too large') || errorMsg.includes('maximum')) {
+        alert(
+          '❌ บันทึกไม่สำเร็จ!\n\n' +
+          'ข้อมูลมีขนาดใหญ่เกินกว่าที่ Firestore รองรับ (1MB)\n\n' +
+          'วิธีแก้:\n' +
+          '• ลดจำนวนรูปลง (แนะนำไม่เกิน 3-4 รูป)\n' +
+          '• ลบรูปบางรูปแล้วลองใหม่\n' +
+          '• กดบันทึกโดยไม่ใส่รูปก่อน แล้วแก้ไขทีหลัง'
+        );
       } else if (errorMsg.includes('network') || errorMsg.includes('offline')) {
         alert('❌ บันทึกไม่สำเร็จ!\n\nไม่สามารถเชื่อมต่ออินเทอร์เน็ตได้\nกรุณาตรวจสอบการเชื่อมต่อ');
+      } else if (errorMsg.includes('permission') || errorMsg.includes('denied')) {
+        alert('❌ บันทึกไม่สำเร็จ!\n\nไม่มีสิทธิ์เข้าถึง Firestore\nกรุณาตรวจสอบ Firestore Rules');
       } else {
-        alert(`❌ บันทึกไม่สำเร็จ!\n\n${errorMsg}\n\nลองลดจำนวนรูปภาพหรือรีเฟรชหน้าเว็บ`);
+        alert(
+          `❌ บันทึกไม่สำเร็จ!\n\n${errorMsg}\n\n` +
+          'ลองลดจำนวนรูปภาพหรือรีเฟรชหน้าเว็บ'
+        );
       }
     } finally {
       setSaving(false);
@@ -377,6 +470,12 @@ export default function HospitalClient() {
     await loadData();
   };
 
+  const openLightbox = (images: string[], startIndex: number) => {
+    setLightboxImages(images);
+    setLightboxIndex(startIndex);
+    setShowLightbox(true);
+  };
+
   if (!orchard || loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center">
@@ -415,25 +514,25 @@ export default function HospitalClient() {
         Icon={Stethoscope}
       />
 
-      <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
+      <div className="px-4 py-4 max-w-2xl mx-auto space-y-3">
 
         {/* Banner: กำลังดูประวัติเฉพาะต้น */}
         {viewTreeId && viewedTreeName && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-3 flex items-center justify-between">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span>📋</span>
+              <span className="text-lg">📋</span>
               <div>
-                <p className="text-sm font-bold text-blue-800 dark:text-blue-300">
+                <p className="text-xs font-bold text-blue-800 dark:text-blue-300">
                   ประวัติของต้น {viewedTreeName}
                 </p>
-                <p className="text-xs text-blue-600 dark:text-blue-400">
+                <p className="text-[10px] text-blue-600 dark:text-blue-400">
                   {filteredRecords.length} รายการ
                 </p>
               </div>
             </div>
             <button
               onClick={() => router.push(`/orchard/hospital?id=${orchardId}`)}
-              className="text-xs font-bold text-blue-700 dark:text-blue-400 hover:underline"
+              className="text-[10px] font-bold text-blue-700 dark:text-blue-400 hover:underline"
             >
               ดูทั้งหมด →
             </button>
@@ -455,9 +554,9 @@ export default function HospitalClient() {
               setEditingId(null);
               setShowForm(true);
             }}
-            className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all"
+            className="w-full py-2.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all"
           >
-            <Plus size={18} /> บันทึกอาการใหม่
+            <Plus size={16} /> บันทึกอาการใหม่
             {viewTreeId && viewedTreeName && (
               <span className="text-xs font-normal opacity-90">— {viewedTreeName}</span>
             )}
@@ -467,16 +566,16 @@ export default function HospitalClient() {
         {/* ── ฟอร์มบันทึก ── */}
         {showForm && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-red-50 dark:bg-red-900/20">
-              <h2 className="font-bold text-red-700 dark:text-red-400">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-200 dark:border-slate-700 bg-red-50 dark:bg-red-900/20">
+              <h2 className="text-sm font-bold text-red-700 dark:text-red-400">
                 {editingId ? 'แก้ไขบันทึก' : 'บันทึกอาการใหม่'}
               </h2>
               <button onClick={() => { setShowForm(false); setEditingId(null); }} className="text-slate-400 hover:text-slate-600">
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="p-4 space-y-3">
+            <div className="p-3 sm:p-4 space-y-2.5">
               {/* เลือกต้น */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">เลือกต้น <span className="text-red-500">*</span></label>
@@ -534,11 +633,19 @@ export default function HospitalClient() {
               {/* รูปภาพ */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-                  รูปภาพอาการ ({form.photos.length}/6)
+                  รูปภาพอาการ ({form.photos.length}/3)
                   {form.photos.length === 0 && <span className="text-slate-400 ml-1">(ไม่บังคับ)</span>}
-                  {form.photos.length > 0 && (
-                    <span className="text-emerald-500 ml-1">✓ {form.photos.length} รูป</span>
-                  )}
+                  {form.photos.length > 0 && (() => {
+                    const totalSize = form.photos.reduce((sum, p) => sum + p.length, 0);
+                    const sizeKB = Math.round(totalSize / 1024);
+                    const color = sizeKB > 600 ? 'text-red-500' : sizeKB > 450 ? 'text-orange-500' : 'text-emerald-500';
+                    return (
+                      <span className={`ml-2 ${color} font-mono text-[10px]`}>
+                        {sizeKB} KB
+                        {sizeKB > 600 && ' ⚠️'}
+                      </span>
+                    );
+                  })()}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {form.photos.map((p, i) => (
@@ -551,31 +658,69 @@ export default function HospitalClient() {
                       >
                         ✕
                       </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] py-0.5 text-center rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        {Math.round((p.length * 3) / 4 / 1024)} KB
+                      </div>
                     </div>
                   ))}
-                  {form.photos.length < 6 && (
-                    <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-red-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all cursor-pointer">
-                      <Camera size={20} />
-                      <span className="text-[10px] mt-1 font-bold">เพิ่มรูป</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => {
-                          handlePhotos(e).catch(err => {
-                            console.error('เกิดข้อผิดพลาดในการเพิ่มรูปภาพ:', err);
-                            alert('❌ ไม่สามารถเพิ่มรูปได้\nลองใช้รูปที่เล็กกว่า');
-                          });
-                        }}
-                      />
-                    </label>
-                  )}
+                  {form.photos.length < 3 && (() => {
+                    const totalSize = form.photos.reduce((sum, p) => sum + p.length, 0);
+                    const sizeKB = Math.round(totalSize / 1024);
+                    const canAddMore = sizeKB < 650;
+                    
+                    if (processing) {
+                      return (
+                        <div className="w-20 h-20 rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-700 flex flex-col items-center justify-center text-blue-500 text-center p-1">
+                          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-blue-500"></div>
+                          <span className="text-[8px] mt-1 leading-tight">กำลัง<br/>ประมวลผล</span>
+                        </div>
+                      );
+                    }
+                    
+                    return canAddMore ? (
+                      <label className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-red-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all cursor-pointer">
+                        <Camera size={20} />
+                        <span className="text-[10px] mt-1 font-bold">เพิ่มรูป</span>
+                        <input
+                          type="file"
+                          accept="image/*,image/jpeg,image/jpg,image/png,image/webp"
+                          className="hidden"
+                          disabled={processing}
+                          onChange={handlePhotos}
+                        />
+                      </label>
+                    ) : (
+                      <div className="w-20 h-20 rounded-lg border-2 border-dashed border-red-300 dark:border-red-700 flex flex-col items-center justify-center text-red-400 text-center p-1">
+                        <span className="text-[9px] font-bold leading-tight">เต็มแล้ว</span>
+                        <span className="text-[8px] leading-tight">ลบก่อน</span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 {form.photos.length > 0 && (
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
-                    💡 ชี้เมาส์ที่รูปและกดปุ่ม ✕ เพื่อลบ · รูปจะถูกย่อขนาดอัตโนมัติเพื่อประหยัดพื้นที่
-                  </p>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                      💡 รูปถูกย่อเหลือ 600px (quality 70%) สูงสุด 3 รูป
+                    </p>
+                    {(() => {
+                      const totalSize = form.photos.reduce((sum, p) => sum + p.length, 0);
+                      const sizeKB = Math.round(totalSize / 1024);
+                      if (sizeKB > 600) {
+                        return (
+                          <p className="text-[10px] text-red-500 dark:text-red-400 font-bold">
+                            ⚠️ รูปมีขนาดใหญ่ ({sizeKB} KB / 700 KB) — ลดเหลือ 2 รูป
+                          </p>
+                        );
+                      } else if (sizeKB > 450) {
+                        return (
+                          <p className="text-[10px] text-orange-500 dark:text-orange-400">
+                            ⚠️ รูปเริ่มใหญ่ ({sizeKB} KB) — ระวังอย่าให้เกิน 700 KB
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                 )}
               </div>
 
@@ -745,7 +890,23 @@ export default function HospitalClient() {
                         {r.photos && r.photos.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {r.photos.map((p, i) => (
-                              <img key={i} src={p} alt="" className="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-600" />
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => openLightbox(r.photos || [], i)}
+                                className="relative w-16 h-16 rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden hover:ring-2 hover:ring-red-400 transition-all group cursor-pointer"
+                              >
+                                <img 
+                                  src={p} 
+                                  alt={`รูปที่ ${i + 1}`} 
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                  <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                                    🔍
+                                  </span>
+                                </div>
+                              </button>
                             ))}
                           </div>
                         )}
@@ -803,6 +964,15 @@ export default function HospitalClient() {
           ))
         )}
       </div>
+
+      {/* Image Lightbox */}
+      {showLightbox && (
+        <ImageLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          onClose={() => setShowLightbox(false)}
+        />
+      )}
     </div>
   );
 }

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
 import SubMenuTabs from '../_components/SubMenuTabs';
+import TreeInfoModal from './TreeInfoModal';
 
 // ── Constants ────────────────────────────────────────────────
 const DEFAULT_ROWS = 11;
@@ -85,15 +86,6 @@ export default function FarmMapClient() {
 
   // Modal state
   const [editing, setEditing] = useState<{ row: number; col: number } | null>(null);
-  const [form, setForm] = useState({
-    treeNumber: '',
-    status: 'normal' as Status,
-    variety: 'หมอนทอง',
-    age: 0,
-    zone: null as Zone,
-    note: '',
-  });
-  const [formError, setFormError] = useState<string | null>(null);
 
   // Mode
   const [mode, setMode] = useState<Mode>('view');
@@ -362,86 +354,72 @@ export default function FarmMapClient() {
   const openEdit = async (row: number, col: number) => {
     const existing = treeMap.get(`${row},${col}`);
     setEditing({ row, col });
-    setFormError(null);
-    if (existing) {
+    
+    // Sync status
+    if (existing && existing.status !== 'seedling') {
       const latest = latestRecordByTree.get(existing.id);
-      let effStatus: Status;
-      if (existing.status === 'seedling') effStatus = 'seedling';
-      else if (latest) effStatus = latest.status === 'treating' ? 'watch' : 'normal';
-      else effStatus = 'normal';
-
-      if (existing.status !== effStatus && existing.status !== 'seedling') {
+      const effStatus: Status = latest?.status === 'treating' ? 'watch' : 'normal';
+      if (existing.status !== effStatus) {
         try {
           await updateTreeProfile(existing.id, { status: effStatus, updatedAt: Date.now() });
           setTrees(prev => prev.map(t => t.id === existing.id ? { ...t, status: effStatus } : t));
         } catch {}
       }
-
-      setForm({
-        treeNumber: existing.treeNumber,
-        status: effStatus,
-        variety: existing.variety || getVarietiesFor(orchard?.name)[0],
-        age: existing.age || 0,
-        zone: existing.zone ?? null,
-        note: existing.note || '',
-      });
-    } else {
-      const varieties = getVarietiesFor(orchard?.name);
-      setForm({
-        treeNumber: defaultTreeNumber(orchard?.name, row, col),
-        status: 'normal',
-        variety: varieties[0],
-        age: 0,
-        zone: null,
-        note: '',
-      });
     }
   };
 
   const closeModal = () => {
     setEditing(null);
-    setFormError(null);
   };
 
-  const handleSave = async () => {
-    if (!editing) return;
-    const tn = form.treeNumber.trim();
-    if (!tn) { setFormError('กรุณากรอกรหัสต้น'); return; }
-    if (tn.length > 20) { setFormError('รหัสต้นต้องไม่เกิน 20 ตัวอักษร'); return; }
-    const existing = treeMap.get(`${editing.row},${editing.col}`);
-    const dup = trees.find(t => t.treeNumber === tn && t.id !== existing?.id);
-    if (dup) { setFormError(`รหัสนี้ซ้ำกับต้นที่ R${dup.row}C${dup.col}`); return; }
-
+  const handleSave = async (formData: any) => {
+    if (!editing) {
+      console.error('[FarmMapClient] handleSave: editing is null');
+      throw new Error('ไม่สามารถบันทึกได้ เนื่องจากไม่มีข้อมูลตำแหน่ง');
+    }
+    
     setSaving(true);
     try {
+      console.log('[FarmMapClient] handleSave start:', { editing, formData, orchardId });
+      
+      const existing = treeMap.get(`${editing.row},${editing.col}`);
+      
       if (existing) {
+        console.log('[FarmMapClient] Updating existing tree:', existing.id);
         await updateTreeProfile(existing.id, {
-          treeNumber: tn,
-          status: form.status,
-          variety: form.variety,
-          age: Number(form.age) || 0,
-          zone: form.zone ?? null,
-          note: form.note,
+          treeNumber: formData.treeNumber,
+          status: formData.status,
+          variety: formData.variety,
+          age: Number(formData.age) || 0,
+          zone: formData.zone ?? null,
+          note: formData.note,
           updatedAt: Date.now(),
         });
       } else {
+        console.log('[FarmMapClient] Creating new tree at:', editing);
         await addTreeProfile({
           orchardId,
-          row: editing.row, col: editing.col,
-          treeNumber: tn,
-          status: form.status,
-          variety: form.variety,
-          age: Number(form.age) || 0,
-          zone: form.zone ?? null,
-          note: form.note,
+          row: editing.row, 
+          col: editing.col,
+          treeNumber: formData.treeNumber,
+          status: formData.status,
+          variety: formData.variety,
+          age: Number(formData.age) || 0,
+          zone: formData.zone ?? null,
+          note: formData.note,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
       }
+      
+      console.log('[FarmMapClient] Save successful, reloading data...');
       await loadData();
       closeModal();
-    } catch {
-      setFormError('บันทึกไม่สำเร็จ ลองอีกครั้ง');
+    } catch (error) {
+      console.error('[FarmMapClient] Save error:', error);
+      alert(`บันทึกไม่สำเร็จ: ${error instanceof Error ? error.message : 'เกิดข้อผิดพลาด'}`);
+      // Re-throw error เพื่อให้ TreeInfoModal รับรู้ว่าบันทึกไม่สำเร็จ
+      throw error;
     } finally {
       setSaving(false);
     }
@@ -773,180 +751,63 @@ export default function FarmMapClient() {
       </div>
 
       {/* Modal แก้ต้น */}
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={closeModal}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">
-                ข้อมูลต้น R{editing.row}C{editing.col}
-              </h2>
-              <button onClick={closeModal} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">
-                  รหัสต้น <span className="text-red-500">*</span>
-                </label>
-                <input type="text" maxLength={20} value={form.treeNumber}
-                  onChange={(e) => setForm({ ...form, treeNumber: e.target.value })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white"
-                  placeholder="เช่น T-001" />
-              </div>
-
-              {!isMango && (
-                <div>
-                  <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">สถานะสุขภาพ</label>
-                  <select value={form.status}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v === 'normal' || v === 'watch' || v === 'seedling') setForm({ ...form, status: v });
-                    }}
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white">
-                    <option value="normal">🌳 ปกติ</option>
-                    <option value="watch">🌲 เฝ้าระวัง</option>
-                    <option value="seedling">🌴 ต้นกล้า</option>
-                  </select>
-                </div>
-              )}
-
-              {/* โซน — ซ่อนในสวนมังคุด */}
-              {!isMango && (
-                <div>
-                  <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">โซน</label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <button type="button" onClick={() => setForm({ ...form, zone: null })}
-                      className={`py-2 rounded-lg text-sm font-bold transition-all ${
-                        !form.zone ? 'bg-slate-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
-                      }`}>
-                      ไม่ระบุ
-                    </button>
-                    <button type="button" onClick={() => setForm({ ...form, zone: 'A' })}
-                      className={`py-2 rounded-lg text-sm font-bold transition-all ${
-                        form.zone === 'A' ? 'bg-violet-500 text-white' : 'bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400'
-                      }`}>
-                      โซน A
-                    </button>
-                    <button type="button" onClick={() => setForm({ ...form, zone: 'B' })}
-                      className={`py-2 rounded-lg text-sm font-bold transition-all ${
-                        form.zone === 'B' ? 'bg-cyan-500 text-white' : 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400'
-                      }`}>
-                      โซน B
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* พันธุ์ — ซ่อนในสวนมังคุด */}
-              {!isMango && (
-                <div>
-                  <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">พันธุ์</label>
-                  <select value={form.variety}
-                    onChange={(e) => setForm({ ...form, variety: e.target.value })}
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white">
-                    {getVarietiesFor(orchard?.name).map((v) => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">อายุต้น (ปี)</label>
-                <input type="number" min={0} value={form.age || ''}
-                  onChange={(e) => setForm({ ...form, age: Number(e.target.value) })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white"
-                  placeholder="0" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-600 dark:text-slate-300 mb-1">หมายเหตุ</label>
-                <textarea rows={3} value={form.note}
-                  onChange={(e) => setForm({ ...form, note: e.target.value })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-slate-800 dark:text-white resize-none"
-                  placeholder="พิมพ์หมายเหตุ..." />
-              </div>
-
-              {formError && (
-                <div className="p-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-lg">
-                  ⚠ {formError}
-                </div>
-              )}
-
-              <div className="space-y-2 pt-2">
-                {/* ปุ่มห้องพยาบาล — ซ่อนในสวนมังคุด */}
-                {!isMango && (() => {
-                  const existingTree = editing ? treeMap.get(`${editing.row},${editing.col}`) : null;
-                  const isActivelySick = existingTree ? treeIdsActivelySick.has(existingTree.id) : false;
-                  return (
-                    <button
-                      onClick={async () => {
-                        if (existingTree) {
-                          closeModal();
-                          if (isActivelySick) {
-                            router.push(`/orchard/hospital?id=${orchardId}&viewTreeId=${existingTree.id}&treeId=${existingTree.id}`);
-                          } else {
-                            router.push(`/orchard/hospital?id=${orchardId}&treeId=${existingTree.id}`);
-                          }
-                        } else if (editing) {
-                          setSaving(true);
-                          try {
-                            const tn = form.treeNumber.trim() || defaultTreeNumber(orchard?.name, editing.row, editing.col);
-                            const dup = trees.find(t => t.treeNumber === tn);
-                            if (dup) { alert(`รหัสต้น "${tn}" ซ้ำ`); setSaving(false); return; }
-                            const newId = await addTreeProfile({
-                              orchardId, row: editing.row, col: editing.col,
-                              treeNumber: tn, status: 'watch',
-                              variety: form.variety, age: Number(form.age) || 0,
-                              zone: form.zone ?? null, note: form.note,
-                              createdAt: Date.now(), updatedAt: Date.now(),
-                            });
-                            closeModal();
-                            router.push(`/orchard/hospital?id=${orchardId}&treeId=${newId}`);
-                          } catch { alert('เกิดข้อผิดพลาด'); }
-                          finally { setSaving(false); }
-                        }
-                      }}
-                      disabled={saving}
-                      className={`w-full py-2.5 rounded-xl font-bold text-sm border disabled:opacity-50 ${
-                        isActivelySick
-                          ? 'bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
-                          : 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'
-                      }`}
-                    >
-                      {isActivelySick ? '📋 ประวัติการป่วย' : '🏥 ส่งห้องพยาบาล'}
-                    </button>
-                  );
-                })()}
-
-                {/* ปุ่มลบต้น (แสดงเฉพาะเมื่อมีต้นอยู่แล้ว) */}
-                {editing && treeMap.get(`${editing.row},${editing.col}`) && (
-                  <button onClick={handleDeleteTree} disabled={saving}
-                    className="w-full py-2 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-50">
-                    <Trash2 size={14} /> ลบต้นนี้
-                  </button>
-                )}
-
-                <div className="flex gap-2">
-                  <button onClick={closeModal} disabled={saving}
-                    className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold disabled:opacity-50">
-                    ยกเลิก
-                  </button>
-                  <button onClick={handleSave} disabled={saving}
-                    className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold disabled:opacity-50">
-                    {saving ? 'กำลังบันทึก...' : 'บันทึก'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <TreeInfoModal
+        editing={editing}
+        existingTree={editing ? treeMap.get(`${editing.row},${editing.col}`) || null : null}
+        orchardId={orchardId}
+        orchardName={orchard?.name}
+        isMango={isMango}
+        trees={trees}
+        hospitalRecords={hospitalRecords}
+        treeIdsActivelySick={treeIdsActivelySick}
+        defaultTreeNumber={defaultTreeNumber}
+        onClose={closeModal}
+        onSave={async (formData) => {
+          if (!editing) return;
+          const existing = treeMap.get(`${editing.row},${editing.col}`);
+          setSaving(true);
+          try {
+            if (existing) {
+              await updateTreeProfile(existing.id, {
+                treeNumber: formData.treeNumber,
+                status: formData.status,
+                variety: formData.variety,
+                age: Number(formData.age) || 0,
+                zone: formData.zone ?? null,
+                note: formData.note,
+                updatedAt: Date.now(),
+              });
+            } else {
+              await addTreeProfile({
+                orchardId,
+                row: editing.row, 
+                col: editing.col,
+                treeNumber: formData.treeNumber,
+                status: formData.status,
+                variety: formData.variety,
+                age: Number(formData.age) || 0,
+                zone: formData.zone ?? null,
+                note: formData.note,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              });
+            }
+            await loadData();
+            closeModal();
+          } catch (error) {
+            console.error('[FarmMapClient] Save error:', error);
+            alert('บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง');
+            throw error; // Re-throw เพื่อให้ TreeInfoModal แสดง error
+          } finally {
+            setSaving(false);
+          }
+        }}
+        onDelete={handleDeleteTree}
+        saving={saving}
+      />
     </div>
   );
 }
-
 function SummaryCard({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl p-2 border border-slate-200 dark:border-slate-700 text-center">

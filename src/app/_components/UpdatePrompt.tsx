@@ -47,10 +47,10 @@ export default function UpdatePrompt() {
         });
       });
 
-      // เช็คอัปเดตทุก 30 วิ
+      // เช็คอัปเดตทุก 10 วิ (ลดจาก 30 วิ)
       interval = setInterval(() => {
         reg.update().catch(() => {});
-      }, 30_000);
+      }, 10_000);
 
       // เช็คอัปเดตเมื่อ tab กลับมา visible
       const onVisible = () => {

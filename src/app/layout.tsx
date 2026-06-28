@@ -47,7 +47,8 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 5,
+  maximumScale: 1, // ป้องกันการ zoom บนมือถือ
+  userScalable: false, // ปิดการ pinch zoom
   viewportFit: "cover", // รองรับ safe-area iPhone notch / Dynamic Island
 };
 
@@ -63,6 +64,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Prevent aggressive caching on mobile */}
+        <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta httpEquiv="Pragma" content="no-cache" />
+        <meta httpEquiv="Expires" content="0" />
+        
         {/* inject theme before paint to prevent flash */}
         <script
           dangerouslySetInnerHTML={{
