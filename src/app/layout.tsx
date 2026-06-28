@@ -68,6 +68,7 @@ export default function RootLayout({
         <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta httpEquiv="Pragma" content="no-cache" />
         <meta httpEquiv="Expires" content="0" />
+        <meta name="build-version" content="4.0.0-20260628-2030" />
         
         {/* inject theme before paint to prevent flash */}
         <script

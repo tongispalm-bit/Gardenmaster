@@ -100,6 +100,9 @@ export default function TreeInfoModal({
     setShowLightbox(true);
   };
 
+  // Debug: log to confirm component loaded
+  console.log('[TreeInfoModal] Rendering - bottom sheet version', { editing, existingTree });
+
   return (
     <>
       {/* Backdrop */}
