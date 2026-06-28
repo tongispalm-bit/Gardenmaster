@@ -119,20 +119,35 @@ export default function HospitalClient() {
   };
 
   // Photo handler — convert to base64
-  const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const remaining = 6 - form.photos.length;
     const toProcess = files.slice(0, remaining);
-    toProcess.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = ev => {
-        setForm(prev => ({
-          ...prev,
-          photos: [...prev.photos, ev.target?.result as string],
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
+    
+    // รอให้ทุกไฟล์โหลดเสร็จก่อน
+    const newPhotos: string[] = [];
+    for (const file of toProcess) {
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        newPhotos.push(base64);
+      } catch (err) {
+        console.error('เกิดข้อผิดพลาดในการอ่านไฟล์:', err);
+      }
+    }
+    
+    // Update state ครั้งเดียวหลังโหลดเสร็จทั้งหมด
+    if (newPhotos.length > 0) {
+      setForm(prev => ({
+        ...prev,
+        photos: [...prev.photos, ...newPhotos],
+      }));
+    }
+    
     e.target.value = '';
   };
 
@@ -490,7 +505,11 @@ export default function HospitalClient() {
                         accept="image/*"
                         multiple
                         className="hidden"
-                        onChange={handlePhotos}
+                        onChange={(e) => {
+                          handlePhotos(e).catch(err => 
+                            console.error('เกิดข้อผิดพลาดในการเพิ่มรูปภาพ:', err)
+                          );
+                        }}
                       />
                     </label>
                   )}
