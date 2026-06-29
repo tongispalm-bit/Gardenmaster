@@ -252,7 +252,7 @@ export default function WaterClient() {
   const settingReady = flowRate > 0 && headCount > 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8 overflow-x-clip">
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}

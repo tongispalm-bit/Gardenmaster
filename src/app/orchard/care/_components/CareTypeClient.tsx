@@ -106,7 +106,7 @@ export default function CareTypeClient({
   const isDurianBackyard = isDurianFarm(orchard.name);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 overflow-x-hidden">
+    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 overflow-x-clip">
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}

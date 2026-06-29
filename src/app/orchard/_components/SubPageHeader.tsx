@@ -74,6 +74,7 @@ export default function SubPageHeader({
 
   return (
     <>
+      <div className="sticky top-0 z-40">
       <header
         className="text-white px-4 pt-3 pb-3"
         style={{ backgroundColor: orchardColor }}
@@ -132,6 +133,7 @@ export default function SubPageHeader({
           orchardName={orchardName}
         />
       )}
+      </div>
     </>
   );
 }
