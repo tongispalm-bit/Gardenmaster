@@ -3,7 +3,7 @@
 // รวม Water, Fertilizer, Spray, Durian Fruit
 // ────────────────────────────────────────────────────────────
 
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy, where } from 'firebase/firestore';
 import { db } from './config';
 import type {
   CareRecord,
@@ -41,9 +41,12 @@ export async function deleteCareRecord(id: string) {
 // ══════════════════════════════════════════════════════════
 
 export async function getWaterSetting(orchardId: string): Promise<WaterSetting | null> {
-  const snapshot = await getDocs(collection(db, 'waterSettings'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as WaterSetting[];
-  return all.find(s => s.orchardId === orchardId) || null;
+  const q = query(
+    collection(db, 'waterSettings'),
+    where('orchardId', '==', orchardId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.empty ? null : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as WaterSetting;
 }
 
 export async function saveWaterSetting(orchardId: string, data: { flowRate: number; headCount: number }) {
@@ -61,9 +64,14 @@ export async function addWaterRecord(record: Omit<WaterRecord, 'id'>) {
 }
 
 export async function getWaterRecords(orchardId: string): Promise<WaterRecord[]> {
-  const snapshot = await getDocs(collection(db, 'waterRecords'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as WaterRecord[];
-  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+  // ✅ Optimized: filter + sort ฝั่ง server
+  const q = query(
+    collection(db, 'waterRecords'),
+    where('orchardId', '==', orchardId),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as WaterRecord[];
 }
 
 export async function deleteWaterRecord(id: string) {
@@ -78,9 +86,13 @@ export async function addStressPeriod(record: Omit<StressPeriod, 'id'>) {
 }
 
 export async function getStressPeriods(orchardId: string): Promise<StressPeriod[]> {
-  const snapshot = await getDocs(collection(db, 'stressPeriods'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as StressPeriod[];
-  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+  const q = query(
+    collection(db, 'stressPeriods'),
+    where('orchardId', '==', orchardId),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as StressPeriod[];
 }
 
 export async function deleteStressPeriod(id: string) {
@@ -92,9 +104,13 @@ export async function deleteStressPeriod(id: string) {
 // ══════════════════════════════════════════════════════════
 
 export async function getFertilizerFormulas(orchardId: string): Promise<FertilizerFormula[]> {
-  const snapshot = await getDocs(collection(db, 'fertilizerFormulas'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as FertilizerFormula[];
-  return all.filter(f => f.orchardId === orchardId).sort((a, b) => a.createdAt - b.createdAt);
+  const q = query(
+    collection(db, 'fertilizerFormulas'),
+    where('orchardId', '==', orchardId),
+    orderBy('createdAt', 'asc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as FertilizerFormula[];
 }
 
 export async function addFertilizerFormula(record: Omit<FertilizerFormula, 'id'>) {
@@ -116,9 +132,14 @@ export async function addFertilizerRecord(record: Omit<FertilizerRecord, 'id'>) 
 }
 
 export async function getFertilizerRecords(orchardId: string): Promise<FertilizerRecord[]> {
-  const snapshot = await getDocs(collection(db, 'fertilizerRecords'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as FertilizerRecord[];
-  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+  // ✅ Optimized: filter + sort ฝั่ง server
+  const q = query(
+    collection(db, 'fertilizerRecords'),
+    where('orchardId', '==', orchardId),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as FertilizerRecord[];
 }
 
 export async function deleteFertilizerRecord(id: string) {
@@ -135,9 +156,14 @@ export async function addSprayRecord(record: Omit<SprayRecord, 'id'>) {
 }
 
 export async function getSprayRecords(orchardId: string): Promise<SprayRecord[]> {
-  const snapshot = await getDocs(collection(db, 'sprayRecords'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as SprayRecord[];
-  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+  // ✅ Optimized: filter + sort ฝั่ง server
+  const q = query(
+    collection(db, 'sprayRecords'),
+    where('orchardId', '==', orchardId),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as SprayRecord[];
 }
 
 export async function deleteSprayRecord(id: string) {
@@ -154,9 +180,13 @@ export async function addDurianFruitRecord(record: Omit<DurianFruitRecord, 'id'>
 }
 
 export async function getDurianFruitRecords(orchardId: string): Promise<DurianFruitRecord[]> {
-  const snapshot = await getDocs(collection(db, 'durianFruitRecords'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as DurianFruitRecord[];
-  return all.filter(r => r.orchardId === orchardId).sort((a, b) => b.createdAt - a.createdAt);
+  const q = query(
+    collection(db, 'durianFruitRecords'),
+    where('orchardId', '==', orchardId),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as DurianFruitRecord[];
 }
 
 export async function deleteDurianFruitRecord(id: string) {

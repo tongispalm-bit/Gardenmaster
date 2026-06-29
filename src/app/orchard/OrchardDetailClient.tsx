@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from '@/lib/useTheme';
-import { getOrchards, isDurianFarm, type Orchard } from '@/lib/firebase';
+import {
+  getOrchard, isDurianFarm, type Orchard
+} from '@/lib/firebase';
 import {
   Home,
   LeafIcon,

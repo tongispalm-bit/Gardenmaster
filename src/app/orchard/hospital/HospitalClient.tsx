@@ -92,12 +92,12 @@ export default function HospitalClient() {
 
   const loadData = async () => {
     try {
-      const [orchards, treeData, recordData] = await Promise.all([
-        getOrchards(),
+      const [orchard, treeData, recordData] = await Promise.all([
+        getOrchard(orchardId), // ✅ ดึงเฉพาะสวนเดียว
         getTreeProfiles(orchardId),
         getHospitalRecords(orchardId),
       ]);
-      setOrchard(orchards.find(o => o.id === orchardId) || null);
+      setOrchard(orchard);
       setTrees(treeData);
       setRecords(recordData);
 

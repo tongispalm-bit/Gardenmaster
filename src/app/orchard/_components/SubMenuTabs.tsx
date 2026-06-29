@@ -37,6 +37,7 @@ const TABS: TabItem[] = [
   { id: 'farm-map', path: '/orchard/farm-map', label: 'ผังสวน',     Icon: MapIcon,      activeColor: 'text-amber-600 dark:text-amber-400',   activeBg: 'bg-amber-50 dark:bg-amber-900/30',   activeBorder: 'border-amber-400 dark:border-amber-600', hideForMangosteen: true },
   { id: 'tree-info', path: '/orchard/tree-info', label: 'ข้อมูลต้น',   Icon: TreeDeciduous,     activeColor: 'text-green-600 dark:text-green-400',   activeBg: 'bg-green-50 dark:bg-green-900/30',   activeBorder: 'border-green-400 dark:border-green-600', hideForMangosteen: true },
   { id: 'care',     path: '/orchard/care',     label: 'การดูแล',    Icon: LeafIcon,     activeColor: 'text-emerald-600 dark:text-emerald-400', activeBg: 'bg-emerald-50 dark:bg-emerald-900/30', activeBorder: 'border-emerald-400 dark:border-emerald-600', hideForMangosteen: true },
+  { id: 'hospital-history', path: '/orchard/hospital-history', label: 'ประวัติการป่วย', Icon: Stethoscope, activeColor: 'text-rose-600 dark:text-rose-400', activeBg: 'bg-rose-50 dark:bg-rose-900/30', activeBorder: 'border-rose-400 dark:border-rose-600', hideForMangosteen: true },
 
   // ── แท็บเฉพาะสวนมังคุด: 4 ประเภทการดูแล (แทน 'การดูแล') ──
   { id: 'mango-home', path: '/orchard/care', label: 'สวนมังคุด',  Icon: LeafIcon, activeColor: 'text-emerald-600 dark:text-emerald-400', activeBg: 'bg-emerald-50 dark:bg-emerald-900/30', activeBorder: 'border-emerald-400 dark:border-emerald-600', mangosteenOnly: true },

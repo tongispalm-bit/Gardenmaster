@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  getOrchards,
+  getOrchard,
   getTreeProfiles,
   addTreeProfile,
   updateTreeProfile,
@@ -108,14 +108,14 @@ export default function FarmMapClient() {
 
   const loadData = async () => {
     try {
-      const [orchards, treeData, hospData, cfg] = await Promise.all([
-        getOrchards(),
+      const [orchard, treeData, hospData, cfg] = await Promise.all([
+        getOrchard(orchardId), // ✅ ดึงเฉพาะสวนเดียว แทนทั้งหมด
         getTreeProfiles(orchardId),
         getHospitalRecords(orchardId),
         getFarmMapConfig(orchardId),
       ]);
 
-      setOrchard(orchards.find((o) => o.id === orchardId) || null);
+      setOrchard(orchard);
       setHospitalRecords(hospData);
 
       if (cfg) {

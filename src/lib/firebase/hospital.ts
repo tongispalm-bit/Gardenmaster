@@ -2,7 +2,7 @@
 // 🏥 HOSPITAL Functions
 // ────────────────────────────────────────────────────────────
 
-import { collection, addDoc, getDocsFromServer, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy } from 'firebase/firestore';
 import { db } from './config';
 import type { HospitalRecord } from './types';
 
@@ -12,10 +12,23 @@ export async function addHospitalRecord(record: Omit<HospitalRecord, 'id'>) {
 }
 
 export async function getHospitalRecords(orchardId?: string) {
-  const snapshot = await getDocsFromServer(collection(db, 'hospitalRecords'));
-  const records = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as HospitalRecord[];
-  const filtered = orchardId ? records.filter(r => r.orchardId === orchardId) : records;
-  return filtered.sort((a, b) => b.createdAt - a.createdAt);
+  if (!orchardId) {
+    const q = query(
+      collection(db, 'hospitalRecords'),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as HospitalRecord[];
+  }
+  
+  // ✅ Optimized: filter + sort ฝั่ง server
+  const q = query(
+    collection(db, 'hospitalRecords'),
+    where('orchardId', '==', orchardId),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as HospitalRecord[];
 }
 
 export async function updateHospitalRecord(id: string, data: Partial<Omit<HospitalRecord, 'id'>>) {
@@ -25,3 +38,4 @@ export async function updateHospitalRecord(id: string, data: Partial<Omit<Hospit
 export async function deleteHospitalRecord(id: string) {
   await deleteDoc(doc(db, 'hospitalRecords', id));
 }
+

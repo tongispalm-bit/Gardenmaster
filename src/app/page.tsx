@@ -148,7 +148,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 pb-24">
       {/* Header — กะทัดรัด */}
-      <header className="bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-700 dark:to-emerald-900 text-white px-5 pt-5 pb-5 rounded-b-3xl shadow-lg">
+      <header className="sticky top-0 z-50 bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-700 dark:to-emerald-900 text-white px-5 pt-5 pb-5 rounded-b-3xl shadow-lg">
         <div className="flex items-center justify-between">
           {/* ซ้าย: รูปโปรไฟล์ + ชื่อ */}
           <button

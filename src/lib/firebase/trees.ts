@@ -2,7 +2,7 @@
 // 🌳 TREE PROFILE Functions
 // ────────────────────────────────────────────────────────────
 
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from './config';
 import type { TreeProfile } from './types';
 
@@ -12,9 +12,18 @@ export async function addTreeProfile(record: Omit<TreeProfile, 'id'>) {
 }
 
 export async function getTreeProfiles(orchardId?: string) {
-  const snapshot = await getDocs(collection(db, 'treeProfiles'));
-  const records = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as TreeProfile[];
-  return orchardId ? records.filter(r => r.orchardId === orchardId) : records;
+  if (!orchardId) {
+    const snapshot = await getDocs(collection(db, 'treeProfiles'));
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as TreeProfile[];
+  }
+  
+  // ✅ Optimized: filter ฝั่ง server
+  const q = query(
+    collection(db, 'treeProfiles'),
+    where('orchardId', '==', orchardId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as TreeProfile[];
 }
 
 export async function updateTreeProfile(id: string, data: Partial<Omit<TreeProfile, 'id'>>) {
@@ -24,3 +33,4 @@ export async function updateTreeProfile(id: string, data: Partial<Omit<TreeProfi
 export async function deleteTreeProfile(id: string) {
   await deleteDoc(doc(db, 'treeProfiles', id));
 }
+

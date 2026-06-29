@@ -2,7 +2,7 @@
 // 🏞️ ORCHARD Functions
 // ────────────────────────────────────────────────────────────
 
-import { collection, addDoc, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { db } from './config';
 import type { Orchard, FarmMapConfig, OrchardStats } from './types';
 
@@ -13,6 +13,12 @@ import type { Orchard, FarmMapConfig, OrchardStats } from './types';
 export async function addOrchard(orchard: Omit<Orchard, 'id'>) {
   const docRef = await addDoc(collection(db, 'orchards'), orchard);
   return docRef.id;
+}
+
+export async function getOrchard(orchardId: string): Promise<Orchard | null> {
+  const { doc: docRef, getDoc } = await import('firebase/firestore');
+  const snapshot = await getDoc(docRef(db, 'orchards', orchardId));
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } as Orchard : null;
 }
 
 export async function getOrchards() {
@@ -43,9 +49,12 @@ export function subscribeOrchard(orchardId: string, callback: (o: Orchard | null
 // ══════════════════════════════════════════════════════════
 
 export async function getFarmMapConfig(orchardId: string): Promise<FarmMapConfig | null> {
-  const snapshot = await getDocs(collection(db, 'farmMapConfigs'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as FarmMapConfig[];
-  return all.find(c => c.orchardId === orchardId) || null;
+  const q = query(
+    collection(db, 'farmMapConfigs'),
+    where('orchardId', '==', orchardId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.empty ? null : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FarmMapConfig;
 }
 
 export async function saveFarmMapConfig(
@@ -76,9 +85,12 @@ export async function saveFarmMapConfig(
 // ══════════════════════════════════════════════════════════
 
 export async function getOrchardStats(orchardId: string): Promise<OrchardStats | null> {
-  const snapshot = await getDocs(collection(db, 'orchardStats'));
-  const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as OrchardStats[];
-  return all.find(s => s.orchardId === orchardId) || null;
+  const q = query(
+    collection(db, 'orchardStats'),
+    where('orchardId', '==', orchardId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.empty ? null : { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as OrchardStats;
 }
 
 export async function saveOrchardStats(orchardId: string, treeCount: number): Promise<string> {

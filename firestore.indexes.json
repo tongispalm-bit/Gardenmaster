@@ -1,4 +1,62 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "hospitalRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orchardId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "waterRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orchardId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fertilizerRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orchardId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "sprayRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orchardId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "durianFruitRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orchardId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "stressPeriods",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orchardId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fertilizerFormulas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "orchardId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
+

@@ -49,6 +49,7 @@ export {
 // ══════════════════════════════════════════════════════════
 export {
   addOrchard,
+  getOrchard,
   getOrchards,
   subscribeOrchards,
   subscribeOrchard,
