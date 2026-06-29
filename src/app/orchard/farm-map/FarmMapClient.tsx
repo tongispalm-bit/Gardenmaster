@@ -12,7 +12,6 @@ import {
   getFarmMapConfig,
   saveFarmMapConfig,
   getVarietiesFor,
-  getTreeCodePrefix,
   isMangosteenFarm,
   type Orchard,
   type TreeProfile,
@@ -63,8 +62,7 @@ const ZONE_BADGE: Record<'A' | 'B', string> = {
 };
 
 function defaultTreeNumber(orchardName: string | undefined, row: number, col: number): string {
-  const prefix = getTreeCodePrefix(orchardName);
-  return `${prefix}${String(row).padStart(2, '0')}${String(col).padStart(2, '0')}`;
+  return `R${row}C${col}`;
 }
 
 export default function FarmMapClient() {

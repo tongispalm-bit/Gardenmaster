@@ -9,7 +9,6 @@ import {
   updateTreeProfile,
   deleteTreeProfile,
   getVarietiesFor,
-  getTreeCodePrefix,
   type Orchard,
   type TreeProfile,
   type HospitalRecord,
@@ -27,8 +26,7 @@ const STATUS_META: Record<Status, { label: string; bg: string; bgDark: string; i
 };
 
 function defaultTreeNumber(orchardName: string | undefined, row: number, col: number): string {
-  const prefix = getTreeCodePrefix(orchardName);
-  return `${prefix}${String(row).padStart(2, '0')}${String(col).padStart(2, '0')}`;
+  return `R${row}C${col}`;
 }
 
 export default function TreeInfoClient() {

@@ -12,6 +12,7 @@ import {
 } from '@/lib/firebase';
 import { Plus, Trash2, Pencil, X, Camera, Flame, Snowflake, ChevronLeft, ChevronRight, Calendar, type LucideIcon } from 'lucide-react';
 import SubPageHeader from '../../_components/SubPageHeader';
+import ImageLightbox from '../../farm-map/ImageLightbox';
 
 // ── Generic shape ที่ Medicine และ Nutrient ใช้ร่วมกัน ──
 export type StockItem = {
@@ -173,6 +174,17 @@ export default function StockListClient({
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Lightbox state
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [showLightbox, setShowLightbox] = useState(false);
+
+  const openLightbox = (images: string[], startIndex: number) => {
+    setLightboxImages(images);
+    setLightboxIndex(startIndex);
+    setShowLightbox(true);
+  };
 
   const [form, setForm] = useState(EMPTY_FORM);
 
@@ -476,11 +488,17 @@ export default function StockListClient({
         } flex items-center gap-3`}
       >
         {it.photos && it.photos.length > 0 ? (
-          <img
-            src={it.photos[0]}
-            alt={it.name}
-            className="w-12 h-12 object-cover rounded-xl flex-shrink-0 border border-slate-200 dark:border-slate-600"
-          />
+          <button
+            type="button"
+            onClick={() => openLightbox(it.photos || [], 0)}
+            className="w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600 hover:ring-2 hover:ring-amber-400 transition-all cursor-pointer"
+          >
+            <img
+              src={it.photos[0]}
+              alt={it.name}
+              className="w-full h-full object-cover"
+            />
+          </button>
         ) : (
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
             showGroup
@@ -1112,6 +1130,15 @@ export default function StockListClient({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Lightbox */}
+      {showLightbox && (
+        <ImageLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          onClose={() => setShowLightbox(false)}
+        />
       )}
     </div>
   );
