@@ -118,7 +118,7 @@ export default function TreeInfoModal({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0 rounded-t-2xl">
             <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate pr-2">
-              ข้อมูลต้น R{editing.row}C{editing.col}
+              ข้อมูลต้น {form.treeNumber.trim() || `R${editing.row}C${editing.col}`}
             </h2>
             <button 
               onClick={onClose} 
