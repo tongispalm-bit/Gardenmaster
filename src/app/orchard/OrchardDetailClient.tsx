@@ -105,8 +105,7 @@ export default function OrchardDetailClient() {
 
   const loadData = async () => {
     try {
-      const orchards = await getOrchards();
-      const found = orchards.find((o) => o.id === orchardId);
+      const found = await getOrchard(orchardId);
       setOrchard(found || null);
     } catch (error) {
       console.error('Error loading data:', error);

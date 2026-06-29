@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  getOrchards,
+  getOrchard,
   getTreeProfiles,
   getHospitalRecords,
   addHospitalRecord,
@@ -211,11 +211,16 @@ export default function HospitalClient() {
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           
-          // Convert to JPEG with increased quality (0.5 -> 0.7)
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          // Convert to WebP (เล็กกว่า JPEG ~25-35% ที่คุณภาพเท่ากัน)
+          // ถ้าเบราว์เซอร์ไม่รองรับ WebP จะ fallback กลับไป JPEG อัตโนมัติ
+          let dataUrl = canvas.toDataURL('image/webp', 0.8);
+          const isWebp = dataUrl.startsWith('data:image/webp');
+          if (!isWebp) {
+            dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          }
           const sizeKB = Math.round((dataUrl.length * 3) / 4 / 1024);
           
-          console.log(`📸 Photo processed: ${w}x${h}px, ${sizeKB}KB`);
+          console.log(`📸 Photo processed: ${w}x${h}px, ${sizeKB}KB (${isWebp ? 'WebP' : 'JPEG fallback'})`);
           
           // Check total size (increased limit to 700KB)
           if (currentKB + sizeKB > 700) {
@@ -700,7 +705,7 @@ export default function HospitalClient() {
                 {form.photos.length > 0 && (
                   <div className="mt-2 space-y-1">
                     <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                      💡 รูปถูกย่อเหลือ 600px (quality 70%) สูงสุด 3 รูป
+                      💡 รูปถูกย่อเหลือ 600px แปลงเป็น WebP สูงสุด 3 รูป
                     </p>
                     {(() => {
                       const totalSize = form.photos.reduce((sum, p) => sum + p.length, 0);

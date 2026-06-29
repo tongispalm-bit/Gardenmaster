@@ -43,7 +43,11 @@ export default function ProfileModal({ open, onClose, user, onUpdated }: Props) 
         const sx = (img.width - minDim) / 2;
         const sy = (img.height - minDim) / 2;
         ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        // แปลงเป็น WebP (เล็กกว่า JPEG) — fallback JPEG ถ้าเบราว์เซอร์ไม่รองรับ
+        let dataUrl = canvas.toDataURL('image/webp', 0.8);
+        if (!dataUrl.startsWith('data:image/webp')) {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        }
         setProfileImage(dataUrl);
       };
       img.src = result;
