@@ -1,7 +1,9 @@
 // Garden Master — Service Worker
 // Strategy: cache-first for app shell, network-first for Firestore-backed pages
 
-const CACHE_VERSION = 'gm-v6'; // CENTERED POPUP - บังคับ reload
+// ⚠️ CACHE_VERSION ถูกแทนที่อัตโนมัติทุกครั้งที่ deploy (ดู deploy.ps1)
+// ห้ามแก้รูปแบบบรรทัดนี้ด้วยมือ — deploy script ใช้ regex แทนที่ค่า
+const CACHE_VERSION = 'gm-202606291742'; // [auto-version]
 const APP_SHELL = `${CACHE_VERSION}-shell`;
 const RUNTIME = `${CACHE_VERSION}-runtime`;
 
