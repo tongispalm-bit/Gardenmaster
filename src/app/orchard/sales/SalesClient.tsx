@@ -81,13 +81,17 @@ export default function SalesClient() {
     }
   };
 
+  // ── ประเภท "เอาไว้เอง" → กรอกแค่น้ำหนัก ไม่ต้องกรอกราคา/กก. แต่ยังคิดค่าเก็บ ──
+  const isSelfKeep = form.grade === 'เอาไว้เอง';
+
   // Computed values
-  const totalAmount = form.weight * form.pricePerKg;
+  const totalAmount = isSelfKeep ? 0 : form.weight * form.pricePerKg;
   const cutCost = form.cutRate * form.weight;
   const netAmount = totalAmount - cutCost;
 
   const handleAdd = async () => {
-    if (!form.weight || !form.pricePerKg) return;
+    if (!form.weight) return;
+    if (!isSelfKeep && !form.pricePerKg) return;
     setSaving(true);
     try {
       await addSaleRecord({
@@ -95,7 +99,7 @@ export default function SalesClient() {
         date: form.date,
         grade: form.grade,
         weight: form.weight,
-        pricePerKg: form.pricePerKg,
+        pricePerKg: isSelfKeep ? 0 : form.pricePerKg,
         totalAmount,
         cutRate: form.cutRate,
         cutCost,
@@ -318,7 +322,7 @@ export default function SalesClient() {
                 </div>
               </div>
 
-              <div className="grid gap-3 grid-cols-2">
+              <div className={isSelfKeep ? 'grid gap-3 grid-cols-1' : 'grid gap-3 grid-cols-2'}>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">น้ำหนัก (กก.)</label>
                   <input type="number" min={0} value={form.weight || ''}
@@ -326,47 +330,86 @@ export default function SalesClient() {
                     placeholder="0"
                     className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white" />
                 </div>
+                {!isSelfKeep && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ราคา/กก. (บาท)</label>
+                    <input type="number" min={0} value={form.pricePerKg || ''}
+                      onChange={(e) => setForm({ ...form, pricePerKg: Number(e.target.value) })}
+                      placeholder="0"
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white" />
+                  </div>
+                )}
+              </div>
+
+              {!isSelfKeep && (
+                <div className="bg-pink-50 dark:bg-pink-900/20 p-3 rounded-xl">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-300">จำนวนเงิน</span>
+                    <span className="font-bold text-pink-700 dark:text-pink-300">
+                      {totalAmount.toLocaleString()} ฿
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {!isSelfKeep && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ราคา/กก. (บาท)</label>
-                  <input type="number" min={0} value={form.pricePerKg || ''}
-                    onChange={(e) => setForm({ ...form, pricePerKg: Number(e.target.value) })}
-                    placeholder="0"
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white" />
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ค่าเก็บ (บาท/กก.)</label>
+                  <select value={form.cutRate}
+                    onChange={(e) => setForm({ ...form, cutRate: Number(e.target.value) })}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white">
+                    {CUT_RATES.map((r) => (
+                      <option key={r} value={r}>{r} บาท/กก.</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
+              )}
 
-              <div className="bg-pink-50 dark:bg-pink-900/20 p-3 rounded-xl">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">จำนวนเงิน</span>
-                  <span className="font-bold text-pink-700 dark:text-pink-300">
-                    {totalAmount.toLocaleString()} ฿
-                  </span>
+              {!isSelfKeep && (
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-300">ค่าเก็บรวม ({form.cutRate}×{form.weight} กก.)</span>
+                    <span className="font-bold text-red-600 dark:text-red-400">-{cutCost.toLocaleString()} ฿</span>
+                  </div>
+                  <div className="flex justify-between text-base border-t border-slate-200 dark:border-slate-600 pt-2">
+                    <span className="font-bold text-slate-800 dark:text-white">ยอดสุทธิ</span>
+                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-lg">
+                      {netAmount.toLocaleString()} ฿
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ค่าเก็บ (บาท/กก.)</label>
-                <select value={form.cutRate}
-                  onChange={(e) => setForm({ ...form, cutRate: Number(e.target.value) })}
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white">
-                  {CUT_RATES.map((r) => (
-                    <option key={r} value={r}>{r} บาท/กก.</option>
-                  ))}
-                </select>
-              </div>
+              {isSelfKeep && (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ค่าเก็บ (บาท/กก.)</label>
+                    <select value={form.cutRate}
+                      onChange={(e) => setForm({ ...form, cutRate: Number(e.target.value) })}
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-pink-500 text-slate-800 dark:text-white">
+                      {CUT_RATES.map((r) => (
+                        <option key={r} value={r}>{r} บาท/กก.</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div className="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-300">ค่าเก็บรวม ({form.cutRate}×{form.weight} กก.)</span>
-                  <span className="font-bold text-red-600 dark:text-red-400">-{cutCost.toLocaleString()} ฿</span>
-                </div>
-                <div className="flex justify-between text-base border-t border-slate-200 dark:border-slate-600 pt-2">
-                  <span className="font-bold text-slate-800 dark:text-white">ยอดสุทธิ</span>
-                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-lg">
-                    {netAmount.toLocaleString()} ฿
-                  </span>
-                </div>
-              </div>
+                  <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl space-y-2">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 text-center font-bold mb-1">
+                      🏠 เก็บไว้เอง — ไม่คิดเป็นยอดขาย แต่คิดค่าเก็บ
+                    </p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-600 dark:text-slate-300">ค่าเก็บรวม ({form.cutRate}×{form.weight} กก.)</span>
+                      <span className="font-bold text-red-600 dark:text-red-400">-{cutCost.toLocaleString()} ฿</span>
+                    </div>
+                    <div className="flex justify-between text-base border-t border-amber-200 dark:border-amber-700/40 pt-2">
+                      <span className="font-bold text-slate-800 dark:text-white">ยอดสุทธิ</span>
+                      <span className="font-extrabold text-red-600 dark:text-red-400 text-lg">
+                        {netAmount.toLocaleString()} ฿
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <input type="text" value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.target.value })}
@@ -379,7 +422,7 @@ export default function SalesClient() {
                 ยกเลิก
               </button>
               <button onClick={handleAdd}
-                disabled={saving || !form.weight || !form.pricePerKg}
+                disabled={saving || !form.weight || (!isSelfKeep && !form.pricePerKg)}
                 className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm">
                 {saving ? 'กำลังบันทึก...' : 'บันทึก'}
               </button>

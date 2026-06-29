@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from '@/lib/useTheme';
 import { ArrowLeft, Home, Moon, Sun } from 'lucide-react';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { isMangosteenFarm } from '@/lib/firebase';
 import SubMenuTabs from './SubMenuTabs';
 
@@ -14,6 +14,10 @@ type Props = {
   isDurianBackyard: boolean;
   title: string;
   Icon: ComponentType<{ size?: number; className?: string }>;
+  /** ปุ่ม/ไอคอนเสริม ฝั่งซ้ายของปุ่มสลับธีมใน header */
+  headerRight?: ReactNode;
+  /** แถบที่แสดงต่อจาก header (เช่น แถบเลือกปี) */
+  belowHeader?: ReactNode;
 };
 
 /** map pathname → activeTab id */
@@ -41,6 +45,8 @@ export default function SubPageHeader({
   isDurianBackyard,
   title,
   Icon,
+  headerRight,
+  belowHeader,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -102,15 +108,21 @@ export default function SubPageHeader({
             <Icon size={18} />
             <span className="font-bold text-sm">{title}</span>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-            title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
-          >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          <div className="flex items-center gap-1">
+            {headerRight}
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
         </div>
       </header>
+
+      {/* แถบเสริมต่อจาก header (เช่น แถบเลือกปี) */}
+      {belowHeader}
 
       {/* สวนมังคุด: render SubMenuTabs ต่อท้ายเสมอ เพื่อให้ทุกหน้าย่อยมี tabs เดียวกัน */}
       {isMango && (

@@ -23,7 +23,7 @@ export const DURIAN_FARM_NAMES = FARM_MAP_ORCHARDS;
 
 /** พันธุ์ทุเรียน */
 const DURIAN_VARIETIES = [
-  'หมอนทอง','ชะนี','กระดุม','พวงมณี','ก้านยาว','มูซานคิง','โอฉี','นวลทองจันทร์',
+  'หมอนทอง','ชะนี','กระดุม','พวงมณี','ก้านยาว','มูซานคิง','โอฉี','นวลทองจันทร์','นกหยิบ',
 ];
 
 /** พันธุ์มังคุด */
@@ -272,6 +272,8 @@ export type DurianFruitRecord = {
   batch: string;
   pollinationDate: string;
   expectedHarvestDate: string;
+  /** ปี พ.ศ. ของรอบการเก็บเกี่ยว */
+  year?: number;
   note: string;
   createdAt: number;
 };
@@ -341,12 +343,12 @@ export type UpgradeExpense = {
 
 // ── 🛒 SALES (การซื้อขาย) ──
 
-export type DurianGrade = 'AB' | 'C' | 'D' | 'อินโด' | 'ตกไซร้' | 'จัมโบ้-เข้' | 'ห้องเย็น' | 'สทและเอาไว้เอา';
+export type DurianGrade = 'AB' | 'C' | 'D' | 'อินโด' | 'ตกไซร้' | 'จัมโบ้-เข้' | 'ห้องเย็น' | 'สทและเอาไว้เอา' | 'เอาไว้เอง';
 export type MangosteenGrade = 'เบอร์หัว' | 'ดอกดำ' | 'เบอร์รวม';
 export type FruitGrade = DurianGrade | MangosteenGrade;
 
 export const DEFAULT_GRADES: Record<string, string[]> = {
-  'ทุเรียนหลังบ้าน': ['AB', 'C', 'D', 'อินโด', 'ตกไซร้', 'จัมโบ้-เข้', 'ห้องเย็น'],
+  'ทุเรียนหลังบ้าน': ['AB', 'C', 'D', 'อินโด', 'ตกไซร้', 'จัมโบ้-เข้', 'ห้องเย็น', 'เอาไว้เอง'],
   'ทุเรียนหมื่นซ่อง': ['AB', 'C', 'D', 'อินโด', 'ตกไซร้', 'จัมโบ้-เข้', 'ห้องเย็น'],
   'สวนมังคุด': ['เบอร์หัว', 'ดอกดำ', 'เบอร์รวม'],
 };

@@ -8,6 +8,7 @@ import {
   addDurianFruitRecord,
   getDurianFruitRecords,
   deleteDurianFruitRecord,
+  getFarmMapConfig,
   isDurianFarm,
   type Orchard,
   type TreeProfile,
@@ -16,6 +17,7 @@ import {
 import { Sprout, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import SubPageHeader from '../../_components/SubPageHeader';
 import FarmMapGrid from '../../_components/FarmMapGrid';
+import { useHarvestYear } from '@/lib/useHarvestYear';
 
 // ทุเรียนใช้เวลา 100 วันจากปัดดอกถึงแก่
 const DAYS_TO_HARVEST = 100;
@@ -33,10 +35,18 @@ function daysUntil(dateStr: string): number {
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+// ── หาปี พ.ศ. ของบันทึก (รองรับข้อมูลเก่าที่ไม่มี field year) ──
+function recordYear(r: DurianFruitRecord): number {
+  if (r.year) return r.year;
+  const ce = new Date(r.pollinationDate).getFullYear();
+  return ce + 543;
+}
+
 export default function DurianFruitClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [trees, setTrees] = useState<TreeProfile[]>([]);
@@ -44,6 +54,13 @@ export default function DurianFruitClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [expandedTree, setExpandedTree] = useState<string | null>(null);
+
+  // ── ผังสวน config (ตรงกับหน้า farm-map) ──
+  const [mapRows, setMapRows] = useState(11);
+  const [mapCols, setMapCols] = useState(9);
+  const [blockedCells, setBlockedCells] = useState<Set<string>>(
+    new Set(['1,1', '1,2', '1,3', '1,4', '1,5', '1,6', '1,7', '1,8'])
+  );
 
   // Multi-select trees
   const [selectedTreeIds, setSelectedTreeIds] = useState<Set<string>>(new Set());
@@ -61,14 +78,20 @@ export default function DurianFruitClient() {
 
   const loadData = async () => {
     try {
-      const [orchards, treeData, recordData] = await Promise.all([
+      const [orchards, treeData, recordData, cfg] = await Promise.all([
         getOrchards(),
         getTreeProfiles(orchardId),
         getDurianFruitRecords(orchardId),
+        getFarmMapConfig(orchardId),
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
       setTrees(treeData);
       setRecords(recordData);
+      if (cfg) {
+        setMapRows(cfg.rows);
+        setMapCols(cfg.cols);
+        setBlockedCells(new Set(cfg.blockedCells));
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -100,6 +123,7 @@ export default function DurianFruitClient() {
           batch: form.batch,
           pollinationDate: form.pollinationDate,
           expectedHarvestDate,
+          year: selectedYear,
           note: form.note,
           createdAt: Date.now(),
         });
@@ -111,18 +135,36 @@ export default function DurianFruitClient() {
     finally { setSaving(false); }
   };
 
-  // จัดกลุ่มตามต้น
+  // ── กรองเฉพาะบันทึกของปีที่เลือก (รอบการเก็บเกี่ยว) ──
+  const yearRecords = useMemo(
+    () => records.filter(r => recordYear(r) === selectedYear),
+    [records, selectedYear]
+  );
+
+  // จัดกลุ่มตามต้น (เฉพาะปีที่เลือก)
   const byTree = useMemo(() => {
     const map: Record<string, DurianFruitRecord[]> = {};
-    for (const r of records) {
+    for (const r of yearRecords) {
       if (!map[r.treeNumber]) map[r.treeNumber] = [];
       map[r.treeNumber].push(r);
     }
     return map;
-  }, [records]);
+  }, [yearRecords]);
 
-  // นับ active (ยังไม่แก่)
-  const activeCount = records.filter(r => daysUntil(r.expectedHarvestDate) > 0).length;
+  // นับ active (ยังไม่แก่) — เฉพาะปีที่เลือก
+  // ── สรุปยอดของปีที่เลือก ──
+  const yearSummary = useMemo(() => {
+    const treeSet = new Set(yearRecords.map(r => r.treeNumber));
+    const harvested = yearRecords.filter(r => daysUntil(r.expectedHarvestDate) <= 0).length;
+    const batchSet = new Set(yearRecords.map(r => r.batch));
+    return {
+      total: yearRecords.length,
+      trees: treeSet.size,
+      active: yearRecords.length - harvested,
+      harvested,
+      batches: batchSet.size,
+    };
+  }, [yearRecords]);
 
   if (!orchard || loading) {
     return (
@@ -145,16 +187,30 @@ export default function DurianFruitClient() {
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
 
-        {/* Summary */}
-        {activeCount > 0 && (
-          <div className="bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 rounded-2xl p-3 flex items-center gap-3">
-            <span className="text-2xl">🌺</span>
-            <div>
-              <p className="text-sm font-bold text-lime-800 dark:text-lime-300">กำลังทำลูก {activeCount} รายการ</p>
-              <p className="text-xs text-lime-600 dark:text-lime-400">รอเก็บเกี่ยวอยู่</p>
-            </div>
+        {/* ── แถบแสดงรอบปีที่เลือก (เปลี่ยนปีได้ที่หน้าผังสวน) ── */}
+        <div className="flex items-center gap-2 bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 rounded-2xl px-4 py-2.5">
+          <span className="text-lg">🗓️</span>
+          <div>
+            <p className="text-[11px] text-lime-600 dark:text-lime-400 leading-none">รอบการเก็บเกี่ยว</p>
+            <p className="text-base font-extrabold text-lime-700 dark:text-lime-300 leading-tight">ปี พ.ศ. {selectedYear}</p>
           </div>
-        )}
+        </div>
+
+        {/* ── สรุปยอดของปีที่เลือก ── */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-lime-50 dark:bg-lime-900/20 border border-lime-200 dark:border-lime-800 rounded-2xl p-3 text-center">
+            <p className="text-[10px] text-lime-600 dark:text-lime-400">บันทึกทั้งหมด</p>
+            <p className="text-xl font-extrabold text-lime-700 dark:text-lime-300">{yearSummary.total}</p>
+          </div>
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-3 text-center">
+            <p className="text-[10px] text-emerald-600 dark:text-emerald-400">กำลังทำลูก</p>
+            <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300">{yearSummary.active}</p>
+          </div>
+          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-2xl p-3 text-center">
+            <p className="text-[10px] text-orange-600 dark:text-orange-400">เก็บแล้ว</p>
+            <p className="text-xl font-extrabold text-orange-700 dark:text-orange-300">{yearSummary.harvested}</p>
+          </div>
+        </div>
 
         {/* ── ผังสวน — กดต้นเพื่อเลือก (หลายต้นได้) ── */}
         <div>
@@ -176,9 +232,12 @@ export default function DurianFruitClient() {
           </div>
           <FarmMapGrid
             trees={trees}
-            fruitRecords={records}
+            fruitRecords={yearRecords}
             selectedTreeIds={selectedTreeIds}
             onToggleTree={handleToggleTree}
+            rows={mapRows}
+            cols={mapCols}
+            blockedCells={blockedCells}
           />
           {selectedTreeIds.size > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -251,12 +310,12 @@ export default function DurianFruitClient() {
 
         {/* ── ประวัติแยกตามต้น ── */}
         <h2 className="font-bold text-sm text-slate-800 dark:text-white">
-          📋 ประวัติการทำลูก
-          <span className="text-xs font-normal text-slate-500 dark:text-slate-400 ml-1">({records.length} รายการ)</span>
+          📋 ประวัติการทำลูก ปี {selectedYear}
+          <span className="text-xs font-normal text-slate-500 dark:text-slate-400 ml-1">({yearRecords.length} รายการ)</span>
         </h2>
 
-        {records.length === 0 ? (
-          <p className="text-center text-slate-500 dark:text-slate-400 text-sm py-6">ยังไม่มีบันทึก</p>
+        {yearRecords.length === 0 ? (
+          <p className="text-center text-slate-500 dark:text-slate-400 text-sm py-6">ยังไม่มีบันทึกในปี {selectedYear}</p>
         ) : (
           Object.entries(byTree).map(([treeNum, treeRecords]) => (
             <div key={treeNum} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">

@@ -2,8 +2,10 @@
 
 import type { TreeProfile, DurianFruitRecord } from '@/lib/firebase';
 
-const ROWS = 11;
-const COLS = 9;
+const DEFAULT_ROWS = 11;
+const DEFAULT_COLS = 9;
+// default blocked: R1C1-R1C8 (ตรงกับ FarmMapClient)
+const DEFAULT_BLOCKED = ['1,1', '1,2', '1,3', '1,4', '1,5', '1,6', '1,7', '1,8'];
 
 type Status = 'normal' | 'watch' | 'seedling';
 
@@ -13,13 +15,8 @@ const STATUS_META: Record<Status, { bg: string; bgDark: string; icon: string }> 
   seedling: { bg: 'bg-sky-100',     bgDark: 'dark:bg-sky-900/40',     icon: '🌴' },
 };
 
-function hasTree(row: number, col: number): boolean {
-  if (row === 1) return col === 9;
-  return true;
-}
-
 function defaultTreeNumber(row: number, col: number): string {
-  return `B${String(row).padStart(2, '0')}${String(col).padStart(2, '0')}`;
+  return `R${row}C${col}`;
 }
 
 type Props = {
@@ -29,9 +26,24 @@ type Props = {
   selectedTreeIds?: Set<string>;
   /** callback เมื่อกดต้น (toggle) */
   onToggleTree?: (tree: TreeProfile) => void;
+  /** config ผังสวน (ตรงกับหน้า farm-map) */
+  rows?: number;
+  cols?: number;
+  /** "row,col" ของ cell ที่ไม่มีต้น */
+  blockedCells?: Set<string>;
 };
 
-export default function FarmMapGrid({ trees, fruitRecords = [], selectedTreeIds = new Set(), onToggleTree }: Props) {
+export default function FarmMapGrid({
+  trees,
+  fruitRecords = [],
+  selectedTreeIds = new Set(),
+  onToggleTree,
+  rows = DEFAULT_ROWS,
+  cols = DEFAULT_COLS,
+  blockedCells = new Set(DEFAULT_BLOCKED),
+}: Props) {
+  const hasTree = (row: number, col: number) => !blockedCells.has(`${row},${col}`);
+
   // index trees by row,col
   const treeMap = new Map<string, TreeProfile>();
   for (const t of trees) treeMap.set(`${t.row},${t.col}`, t);
@@ -46,9 +58,9 @@ export default function FarmMapGrid({ trees, fruitRecords = [], selectedTreeIds 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl p-2 border border-slate-200 dark:border-slate-700">
       {/* Column labels */}
-      <div className="grid mb-0.5" style={{ gridTemplateColumns: `20px repeat(${COLS}, 1fr)`, gap: '2px' }}>
+      <div className="grid mb-0.5" style={{ gridTemplateColumns: `20px repeat(${cols}, 1fr)`, gap: '2px' }}>
         <div />
-        {Array.from({ length: COLS }, (_, i) => (
+        {Array.from({ length: cols }, (_, i) => (
           <div key={i} className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400 h-5">
             C{i + 1}
           </div>
@@ -56,14 +68,14 @@ export default function FarmMapGrid({ trees, fruitRecords = [], selectedTreeIds 
       </div>
 
       {/* Rows */}
-      {Array.from({ length: ROWS }, (_, rIdx) => {
+      {Array.from({ length: rows }, (_, rIdx) => {
         const row = rIdx + 1;
         return (
-          <div key={row} className="grid mb-0.5" style={{ gridTemplateColumns: `20px repeat(${COLS}, 1fr)`, gap: '2px' }}>
+          <div key={row} className="grid mb-0.5" style={{ gridTemplateColumns: `20px repeat(${cols}, 1fr)`, gap: '2px' }}>
             <div className="flex items-center justify-center text-[9px] font-bold text-slate-500 dark:text-slate-400">
               R{row}
             </div>
-            {Array.from({ length: COLS }, (_, cIdx) => {
+            {Array.from({ length: cols }, (_, cIdx) => {
               const col = cIdx + 1;
               if (!hasTree(row, col)) {
                 return (
