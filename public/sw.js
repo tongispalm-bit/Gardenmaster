@@ -3,7 +3,7 @@
 
 // ⚠️ CACHE_VERSION ถูกแทนที่อัตโนมัติทุกครั้งที่ deploy (ดู deploy.ps1)
 // ห้ามแก้รูปแบบบรรทัดนี้ด้วยมือ — deploy script ใช้ regex แทนที่ค่า
-const CACHE_VERSION = 'gm-202606301630'; // [auto-version]
+const CACHE_VERSION = 'gm-202606301634'; // [auto-version]
 const APP_SHELL = `${CACHE_VERSION}-shell`;
 const RUNTIME = `${CACHE_VERSION}-runtime`;
 

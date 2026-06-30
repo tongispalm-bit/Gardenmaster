@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 /**
  * แจ้งเตือนเมื่อมี Service Worker เวอร์ชันใหม่ (มีการ deploy ใหม่)
+ * แสดงเป็น popup กลางจอ
  * ทำงาน:
  * 1. ฟัง event `controllerchange` — เมื่อ SW ใหม่ activate
- * 2. ตรวจ `reg.update()` ทุก 30 วิ
- * 3. ถ้าเจอเวอร์ชันใหม่ที่ waiting → แสดง prompt ให้ผู้ใช้กดอัปเดต
+ * 2. ตรวจ `reg.update()` เป็นระยะ
+ * 3. ถ้าเจอเวอร์ชันใหม่ที่ waiting → แสดง popup ให้ผู้ใช้กดอัปเดต
  */
 export default function UpdatePrompt() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
@@ -47,7 +48,7 @@ export default function UpdatePrompt() {
         });
       });
 
-      // เช็คอัปเดตทุก 10 วิ (ลดจาก 30 วิ)
+      // เช็คอัปเดตทุก 10 วิ
       interval = setInterval(() => {
         reg.update().catch(() => {});
       }, 10_000);
@@ -80,42 +81,8 @@ export default function UpdatePrompt() {
     };
   }, []);
 
-  // วัดความสูงของ header sticky ในหน้าปัจจุบัน เพื่อวางแถบใต้ header
-  useEffect(() => {
-    if (!showPrompt) return;
-
-    const measure = () => {
-      // หา element ที่ sticky/fixed อยู่ติดขอบบน (top: 0) แล้วเอาตัวที่สูงสุด
-      let maxBottom = 0;
-      const candidates = document.querySelectorAll('header, [class*="sticky"], [class*="fixed"]');
-      candidates.forEach((el) => {
-        const node = el as HTMLElement;
-        // ข้ามตัวแถบอัปเดตเอง
-        if (node.dataset.updatePrompt === 'true') return;
-        const style = window.getComputedStyle(node);
-        if (style.position !== 'sticky' && style.position !== 'fixed') return;
-        const rect = node.getBoundingClientRect();
-        // นับเฉพาะตัวที่ติดขอบบน (top ใกล้ 0) และมองเห็นอยู่
-        if (rect.top <= 1 && rect.height > 0 && rect.bottom > maxBottom) {
-          maxBottom = rect.bottom;
-        }
-      });
-      // ถ้าไม่เจอ header → ใช้ค่า default 16px, ถ้าเจอ → วางใต้ header + เว้น 8px
-      setTopOffset(maxBottom > 0 ? maxBottom + 8 : 16);
-    };
-
-    measure();
-    // วัดซ้ำเมื่อ resize/scroll (เผื่อ header เปลี่ยนขนาด)
-    window.addEventListener('resize', measure);
-    const t = setTimeout(measure, 300); // เผื่อ header render ช้า
-    return () => {
-      window.removeEventListener('resize', measure);
-      clearTimeout(t);
-    };
-  }, [showPrompt]);
-
   const handleUpdate = () => {
-    // ซ่อนแถบทันทีเมื่อกดอัปเดต
+    // ซ่อน popup ทันทีเมื่อกดอัปเดต
     setShowPrompt(false);
     // ส่งสัญญาณให้ SW ที่รออยู่ activate (ถ้ามี)
     if (waitingWorker) {
@@ -143,29 +110,35 @@ export default function UpdatePrompt() {
   return (
     <div
       data-update-prompt="true"
-      className="fixed top-0 inset-x-0 z-[9999] px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)]"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
     >
-      <div className="max-w-sm mx-auto bg-emerald-500 text-white rounded-2xl shadow-2xl p-3 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-          <Download size={18} />
+      <div className="w-full max-w-xs bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {/* ไอคอน + ข้อความ */}
+        <div className="px-6 pt-6 pb-4 text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+            <Download size={30} className="text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white">มีเวอร์ชันใหม่</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            อัปเดตเพื่อใช้งานฟีเจอร์และการแก้ไขล่าสุด
+          </p>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold">มีเวอร์ชันใหม่</p>
-          <p className="text-[11px] opacity-90">กดเพื่ออัปเดตแอป</p>
+
+        {/* ปุ่ม */}
+        <div className="px-4 pb-4 flex flex-col gap-2">
+          <button
+            onClick={handleUpdate}
+            className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-xl font-extrabold text-sm transition-colors"
+          >
+            อัปเดตเดี๋ยวนี้
+          </button>
+          <button
+            onClick={() => setShowPrompt(false)}
+            className="w-full py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl font-bold text-sm transition-colors"
+          >
+            ไว้ภายหลัง
+          </button>
         </div>
-        <button
-          onClick={handleUpdate}
-          className="px-3 py-1.5 bg-white text-emerald-600 rounded-lg text-xs font-extrabold hover:bg-emerald-50 transition-colors"
-        >
-          อัปเดต
-        </button>
-        <button
-          onClick={() => setShowPrompt(false)}
-          className="text-white/80 hover:text-white p-1"
-          title="ปิด"
-        >
-          <X size={16} />
-        </button>
       </div>
     </div>
   );
