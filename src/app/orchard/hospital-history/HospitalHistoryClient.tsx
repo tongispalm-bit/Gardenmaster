@@ -14,7 +14,7 @@ import {
 import { Home, Moon, Sun, ChevronRight } from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
 import SubMenuTabs from '../_components/SubMenuTabs';
-import ImageLightbox from '../farm-map/ImageLightbox';
+import ImageViewerModal from '../_components/ImageViewerModal';
 
 const SEVERITY_BG: Record<Severity, { bg: string; bgDark: string; label: string; textColor: string }> = {
   mild:     { bg: 'bg-yellow-100', bgDark: 'dark:bg-yellow-900/40', label: 'เล็กน้อย', textColor: 'text-yellow-700 dark:text-yellow-400' },
@@ -407,7 +407,7 @@ export default function HospitalHistoryClient() {
 
       {/* Image Lightbox */}
       {showLightbox && (
-        <ImageLightbox
+        <ImageViewerModal
           images={lightboxImages}
           initialIndex={lightboxIndex}
           onClose={() => setShowLightbox(false)}
