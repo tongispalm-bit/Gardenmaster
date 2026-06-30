@@ -13,6 +13,8 @@ import { Download, X } from 'lucide-react';
 export default function UpdatePrompt() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
+  // ระยะ top ของแถบ (px) — คำนวณจากความสูง header sticky ของหน้านั้น
+  const [topOffset, setTopOffset] = useState(16);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -80,6 +82,40 @@ export default function UpdatePrompt() {
     };
   }, []);
 
+  // วัดความสูงของ header sticky ในหน้าปัจจุบัน เพื่อวางแถบใต้ header
+  useEffect(() => {
+    if (!showPrompt) return;
+
+    const measure = () => {
+      // หา element ที่ sticky/fixed อยู่ติดขอบบน (top: 0) แล้วเอาตัวที่สูงสุด
+      let maxBottom = 0;
+      const candidates = document.querySelectorAll('header, [class*="sticky"], [class*="fixed"]');
+      candidates.forEach((el) => {
+        const node = el as HTMLElement;
+        // ข้ามตัวแถบอัปเดตเอง
+        if (node.dataset.updatePrompt === 'true') return;
+        const style = window.getComputedStyle(node);
+        if (style.position !== 'sticky' && style.position !== 'fixed') return;
+        const rect = node.getBoundingClientRect();
+        // นับเฉพาะตัวที่ติดขอบบน (top ใกล้ 0) และมองเห็นอยู่
+        if (rect.top <= 1 && rect.height > 0 && rect.bottom > maxBottom) {
+          maxBottom = rect.bottom;
+        }
+      });
+      // ถ้าไม่เจอ header → ใช้ค่า default 16px, ถ้าเจอ → วางใต้ header + เว้น 8px
+      setTopOffset(maxBottom > 0 ? maxBottom + 8 : 16);
+    };
+
+    measure();
+    // วัดซ้ำเมื่อ resize/scroll (เผื่อ header เปลี่ยนขนาด)
+    window.addEventListener('resize', measure);
+    const t = setTimeout(measure, 300); // เผื่อ header render ช้า
+    return () => {
+      window.removeEventListener('resize', measure);
+      clearTimeout(t);
+    };
+  }, [showPrompt]);
+
   const handleUpdate = () => {
     // ส่งสัญญาณให้ SW ที่รออยู่ activate (ถ้ามี)
     if (waitingWorker) {
@@ -105,7 +141,11 @@ export default function UpdatePrompt() {
   if (!showPrompt) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] max-w-sm w-[calc(100%-2rem)]">
+    <div
+      data-update-prompt="true"
+      className="fixed left-1/2 -translate-x-1/2 z-[60] max-w-sm w-[calc(100%-2rem)] transition-[top] duration-300"
+      style={{ top: `${topOffset}px` }}
+    >
       <div className="bg-emerald-500 text-white rounded-2xl shadow-2xl p-3 flex items-center gap-3">
         <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
           <Download size={18} />
