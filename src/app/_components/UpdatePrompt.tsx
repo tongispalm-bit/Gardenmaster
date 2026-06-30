@@ -13,8 +13,6 @@ import { Download, X } from 'lucide-react';
 export default function UpdatePrompt() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
-  // ระยะ top ของแถบ (px) — คำนวณจากความสูง header sticky ของหน้านั้น
-  const [topOffset, setTopOffset] = useState(16);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -117,6 +115,8 @@ export default function UpdatePrompt() {
   }, [showPrompt]);
 
   const handleUpdate = () => {
+    // ซ่อนแถบทันทีเมื่อกดอัปเดต
+    setShowPrompt(false);
     // ส่งสัญญาณให้ SW ที่รออยู่ activate (ถ้ามี)
     if (waitingWorker) {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
@@ -143,10 +143,9 @@ export default function UpdatePrompt() {
   return (
     <div
       data-update-prompt="true"
-      className="fixed left-1/2 -translate-x-1/2 z-[60] max-w-sm w-[calc(100%-2rem)] transition-[top] duration-300"
-      style={{ top: `${topOffset}px` }}
+      className="fixed top-0 inset-x-0 z-[9999] px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)]"
     >
-      <div className="bg-emerald-500 text-white rounded-2xl shadow-2xl p-3 flex items-center gap-3">
+      <div className="max-w-sm mx-auto bg-emerald-500 text-white rounded-2xl shadow-2xl p-3 flex items-center gap-3">
         <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
           <Download size={18} />
         </div>
