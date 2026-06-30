@@ -72,24 +72,24 @@ export default function DurianHeader({
   return (
     <>
       <div className="sticky top-0 z-40">
-        <header className="text-white px-2" style={{ backgroundColor: orchardColor }}>
-          <div className="flex items-center gap-1 h-16">
+        <header className="text-white px-2.5" style={{ backgroundColor: orchardColor }}>
+          <div className="flex items-center gap-1 h-[72px]">
             {/* ซ้าย: ปุ่มบ้าน → หน้าผังสวน (หน้าแรกของสวนทุเรียนหลังบ้าน) */}
             <button
               onClick={() => router.push(`/orchard/farm-map?id=${orchardId}`)}
-              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
+              className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
               title="หน้าผังสวน"
             >
-              <Home size={22} />
+              <Home size={24} />
             </button>
 
             {/* กลาง: ชื่อสวน + สถานะ sync */}
-            <div className="flex-1 min-w-0 px-0.5">
+            <div className="flex-1 min-w-0 px-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-lg leading-none">{orchardIcon}</span>
+                <span className="text-xl leading-none">{orchardIcon}</span>
                 <span className="font-bold text-lg leading-tight truncate">{orchardName}</span>
               </div>
-              <div className="flex items-center gap-1 ml-0.5">
+              <div className="flex items-center gap-1 ml-0.5 mt-0.5">
                 <span
                   className={`inline-block w-1.5 h-1.5 rounded-full ${
                     online ? 'bg-green-300 animate-pulse' : 'bg-slate-300'
@@ -104,7 +104,7 @@ export default function DurianHeader({
             {/* ขวา: โปรไฟล์ */}
             <button
               onClick={() => setProfileOpen(true)}
-              className="w-[42px] h-11 flex items-center justify-center flex-shrink-0"
+              className="w-12 h-12 flex items-center justify-center flex-shrink-0"
               title="โปรไฟล์"
             >
               {user?.profileImage ? (
@@ -112,10 +112,10 @@ export default function DurianHeader({
                 <img
                   src={user.profileImage}
                   alt={user.displayName || user.username}
-                  className="w-9 h-9 rounded-full object-cover ring-2 ring-white/50"
+                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white/50"
                 />
               ) : (
-                <span className="w-9 h-9 flex items-center justify-center rounded-full bg-white/25 ring-2 ring-white/40 text-sm font-extrabold">
+                <span className="w-10 h-10 flex items-center justify-center rounded-full bg-white/25 ring-2 ring-white/40 text-base font-extrabold">
                   {(user?.displayName || user?.username || '?').slice(0, 1).toUpperCase()}
                 </span>
               )}
@@ -126,10 +126,10 @@ export default function DurianHeader({
               <div className="relative flex-shrink-0" ref={yearRef}>
                 <button
                   onClick={() => setYearOpen((v) => !v)}
-                  className="flex items-center gap-1 bg-white/20 hover:bg-white/30 rounded-full px-2 h-[34px] transition-colors"
+                  className="flex items-center gap-1 bg-white/20 hover:bg-white/30 active:bg-white/40 rounded-full px-2.5 h-9 transition-colors"
                   title="เปลี่ยนรอบปีเก็บเกี่ยว"
                 >
-                  <Calendar size={14} />
+                  <Calendar size={15} />
                   <span className="text-xs font-bold">{year}</span>
                   <ChevronDown size={13} />
                 </button>
@@ -145,7 +145,7 @@ export default function DurianHeader({
                           <button
                             key={y}
                             onClick={() => { setYear(y); setYearOpen(false); }}
-                            className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-colors ${
+                            className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors ${
                               active
                                 ? 'font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
                                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
@@ -165,10 +165,10 @@ export default function DurianHeader({
             {/* ธีม (ขวาสุด) */}
             <button
               onClick={toggleTheme}
-              className="w-10 h-11 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
+              className="w-11 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
               title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
             >
-              {mounted && isDark ? <Sun size={20} /> : <Moon size={20} />}
+              {mounted && isDark ? <Sun size={22} /> : <Moon size={22} />}
             </button>
           </div>
         </header>
