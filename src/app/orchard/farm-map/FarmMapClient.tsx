@@ -504,9 +504,8 @@ export default function FarmMapClient() {
           </div>
         </div>
       )}
-      </div>
-
       <SubMenuTabs activeTab="farm-map" orchardId={orchardId} orchardName={orchard.name} />
+      </div>
 
       <div className="px-3 sm:px-6 py-3 max-w-6xl mx-auto">
         {/* Summary Cards */}

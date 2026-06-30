@@ -160,7 +160,8 @@ export default function HospitalHistoryClient() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-40 text-white px-4 pt-4 pb-4" style={{ backgroundColor: orchard.color }}>
+      <div className="sticky top-0 z-40">
+      <header className="text-white px-4 pt-4 pb-4" style={{ backgroundColor: orchard.color }}>
         <div className="flex items-center justify-between">
           <button onClick={() => router.push('/')} className="p-1.5 hover:bg-white/20 rounded-full">
             <Home size={18} />
@@ -176,6 +177,7 @@ export default function HospitalHistoryClient() {
       </header>
 
       <SubMenuTabs activeTab="hospital-history" orchardId={orchardId} orchardName={orchard.name} />
+      </div>
 
       <div className="px-3 sm:px-6 py-4 max-w-4xl mx-auto">
         {/* Title */}
