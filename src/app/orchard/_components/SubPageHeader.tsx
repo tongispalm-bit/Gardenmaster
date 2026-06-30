@@ -76,47 +76,47 @@ export default function SubPageHeader({
     <>
       <div className="sticky top-0 z-40">
       <header
-        className="text-white px-4 pt-3 pb-3"
+        className="text-white px-2.5"
         style={{ backgroundColor: orchardColor }}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between h-16">
           {isMangoOverview ? (
             <button
               onClick={() => router.push('/')}
-              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
               title="หน้าแรก"
             >
-              <Home size={18} />
+              <Home size={22} />
             </button>
           ) : isMango ? (
             <button
               onClick={() => router.push(`/orchard/care?id=${orchardId}`)}
-              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
               title="หน้าสวนมังคุด"
             >
-              <Home size={18} />
+              <Home size={22} />
             </button>
           ) : (
             <button
               onClick={handleBack}
-              className="flex items-center gap-1.5 p-1.5 hover:bg-white/20 rounded-full transition-colors text-sm font-bold"
+              className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
               title="ย้อนกลับ"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={22} />
             </button>
           )}
           <div className="flex items-center gap-2">
-            <Icon size={18} />
-            <span className="font-bold text-sm">{title}</span>
+            <Icon size={20} />
+            <span className="font-bold text-lg">{title}</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             {headerRight}
             <button
               onClick={toggleTheme}
-              className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+              className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
               title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
             >
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              {isDark ? <Sun size={22} /> : <Moon size={22} />}
             </button>
           </div>
         </div>

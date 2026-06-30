@@ -461,27 +461,27 @@ export default function FarmMapClient() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8 overflow-x-clip">
       <div className="sticky top-0 z-40">
-      <header className="text-white px-4 pt-4 pb-4" style={{ backgroundColor: orchard.color }}>
-        <div className="flex items-center justify-between">
-          <button onClick={() => router.push('/')} className="p-1.5 hover:bg-white/20 rounded-full">
-            <Home size={18} />
+      <header className="text-white px-2.5" style={{ backgroundColor: orchard.color }}>
+        <div className="flex items-center justify-between h-16">
+          <button onClick={() => router.push('/')} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
+            <Home size={22} />
           </button>
           <div className="flex items-center gap-2 text-center">
             <span className="text-2xl">{orchard.icon}</span>
             <h1 className="text-lg font-bold">{orchard.name}</h1>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             {!isMango && (
               <button
                 onClick={() => setShowYearBar(v => !v)}
-                className="p-1.5 hover:bg-white/20 rounded-full"
+                className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full"
                 title="เลือกปี พ.ศ."
               >
-                <Menu size={18} />
+                <Menu size={22} />
               </button>
             )}
-            <button onClick={toggleTheme} className="p-1.5 hover:bg-white/20 rounded-full">
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            <button onClick={toggleTheme} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
+              {isDark ? <Sun size={22} /> : <Moon size={22} />}
             </button>
           </div>
         </div>
