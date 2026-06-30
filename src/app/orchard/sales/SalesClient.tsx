@@ -18,6 +18,7 @@ import {
   type FruitGrade,
 } from '@/lib/firebase';
 import { ShoppingCart, Trash2, Plus, X } from 'lucide-react';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import SubMenuTabs from '../_components/SubMenuTabs';
 import SubPageHeader from '../_components/SubPageHeader';
 
@@ -27,6 +28,7 @@ export default function SalesClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [records, setRecords] = useState<SaleRecord[]>([]);
@@ -50,8 +52,6 @@ export default function SalesClient() {
   });
 
   // Year filter for summary
-  const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
 
   useEffect(() => {
     if (!orchardId) { router.push('/'); return; }
@@ -105,6 +105,7 @@ export default function SalesClient() {
         cutCost,
         netAmount,
         note: form.note,
+        year: selectedYear,
         createdAt: Date.now(),
       });
       setForm({
@@ -124,9 +125,9 @@ export default function SalesClient() {
     }
   };
 
-  // Year summary
+  // Year summary — กรองตามรอบปีเก็บเกี่ยว (พ.ศ.)
   const yearRecords = useMemo(
-    () => records.filter((r) => r.date.startsWith(String(selectedYear))),
+    () => records.filter((r) => getRecordYear(r) === selectedYear),
     [records, selectedYear]
   );
 
@@ -144,13 +145,6 @@ export default function SalesClient() {
     }
     return { totalSales, totalWeight, totalCut, totalNet, byGrade };
   }, [yearRecords]);
-
-  // Available years
-  const availableYears = useMemo(() => {
-    const years = new Set(records.map((r) => Number(r.date.slice(0, 4))));
-    years.add(currentYear);
-    return Array.from(years).sort((a, b) => b - a);
-  }, [records, currentYear]);
 
   // Daily summary — จัดกลุ่มตามวัน
   const dailySummaries = useMemo(() => {
@@ -237,15 +231,9 @@ export default function SalesClient() {
         <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-800 dark:text-white">สรุปรายปี</h2>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="p-2 bg-slate-50 dark:bg-slate-700 rounded-xl text-sm font-bold outline-none text-slate-800 dark:text-white"
-            >
-              {availableYears.map((y) => (
-                <option key={y} value={y}>{y + 543}</option>
-              ))}
-            </select>
+            <span className="px-3 py-1.5 bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400 rounded-xl text-sm font-bold">
+              รอบปี พ.ศ. {selectedYear}
+            </span>
           </div>
 
           {yearRecords.length === 0 ? (

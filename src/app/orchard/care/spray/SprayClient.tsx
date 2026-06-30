@@ -12,6 +12,7 @@ import {
   type MedicineItemRecord, type NutrientItemRecord,
 } from '@/lib/firebase';
 import { Bug, Plus, Trash2, ChevronLeft, ChevronRight, Sprout, FlaskConical, Leaf, X } from 'lucide-react';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import SubPageHeader from '../../_components/SubPageHeader';
 
 type GroupMeta = {
@@ -42,9 +43,10 @@ export default function SprayClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [records, setRecords] = useState<SprayRecord[]>([]);
+  const [allRecords, setAllRecords] = useState<SprayRecord[]>([]);
   const [stocks, setStocks] = useState<StockOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,7 +93,7 @@ export default function SprayClient() {
     const unsubs: Array<() => void> = [
       subscribeOrchard(orchardId, setOrchard),
       subscribeCollection<SprayRecord>('sprayRecords', orchardId, (items) => {
-        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+        setAllRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
       }),
       subscribeCollection<MedicineItemRecord>('medicineItems', orchardId, (items) => {
         medItems = items;
@@ -117,7 +119,7 @@ export default function SprayClient() {
         getNutrientItems(orchardId),
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
-      setRecords(r);
+      setAllRecords(r);
       const combined: StockOption[] = [
         ...medItems.map((m: MedicineItemRecord) => ({ id: m.id, group: m.type as SprayMedicineGroup, name: m.name, unit: m.unit, remain: m.amount })),
         ...nutrItems.map((n: NutrientItemRecord) => ({ id: n.id, group: n.type as SprayMedicineGroup, name: n.name, unit: n.unit, remain: n.amount })),
@@ -139,6 +141,12 @@ export default function SprayClient() {
   }, [stocks]);
 
   // ── ข้อมูลปฏิทิน ──
+  // กรองเฉพาะบันทึกของปีที่เลือก (รอบการเก็บเกี่ยว)
+  const records = useMemo(
+    () => allRecords.filter(r => getRecordYear(r) === selectedYear),
+    [allRecords, selectedYear]
+  );
+
   // map: 'YYYY-MM-DD' → SprayRecord[] ของวันนั้น
   const recordsByDate = useMemo(() => {
     const m = new Map<string, SprayRecord[]>();
@@ -253,6 +261,7 @@ export default function SprayClient() {
         pestDisease: form.pestDisease,
         medicines: meds,
         note: form.note,
+        year: selectedYear,
         createdAt: Date.now(),
       });
 

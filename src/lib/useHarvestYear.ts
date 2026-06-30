@@ -6,6 +6,25 @@ import { useState, useEffect, useCallback } from 'react';
 export const HARVEST_YEAR_OPTIONS = [2569, 2570, 2571, 2572];
 const DEFAULT_YEAR = HARVEST_YEAR_OPTIONS[0];
 
+/**
+ * หาปี พ.ศ. ของบันทึก รองรับข้อมูลเก่าที่ไม่มี field `year`
+ * - ถ้ามี field year → ใช้ค่านั้น
+ * - ถ้าไม่มี → คำนวณจาก date (ค.ศ. + 543); ถ้าไม่มี date ด้วย → ปีเริ่มต้น
+ */
+export function getRecordYear(
+  record: { year?: number; date?: string; createdAt?: number },
+): number {
+  if (record.year) return record.year;
+  if (record.date) {
+    const ce = new Date(record.date).getFullYear();
+    if (!isNaN(ce)) return ce + 543;
+  }
+  if (record.createdAt) {
+    return new Date(record.createdAt).getFullYear() + 543;
+  }
+  return DEFAULT_YEAR;
+}
+
 function storageKey(orchardId: string) {
   return `gm-harvest-year-${orchardId}`;
 }

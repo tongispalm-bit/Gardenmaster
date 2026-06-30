@@ -12,6 +12,7 @@ import {
   type Orchard, type WaterSetting, type WaterRecord, type DurianGrowthStage,
   type StressPeriod,
 } from '@/lib/firebase';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import { Droplets, Trash2, ChevronLeft, ChevronRight, X, Plus, Settings, AlertTriangle } from 'lucide-react';
 import SubPageHeader from '../../_components/SubPageHeader';
 
@@ -33,10 +34,11 @@ export default function WaterClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [setting, setSetting] = useState<WaterSetting | null>(null);
-  const [records, setRecords] = useState<WaterRecord[]>([]);
+  const [allRecords, setAllRecords] = useState<WaterRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingSetting, setSavingSetting] = useState(false);
   const [savingRecord, setSavingRecord] = useState(false);
@@ -76,7 +78,7 @@ export default function WaterClient() {
     const unsubs: Array<() => void> = [
       subscribeOrchard(orchardId, setOrchard),
       subscribeCollection<WaterRecord>('waterRecords', orchardId, (items) => {
-        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+        setAllRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
       }),
       subscribeCollection<StressPeriod>('stressPeriods', orchardId, (items) => {
         setStressPeriods([...items].sort((a, b) => b.createdAt - a.createdAt));
@@ -104,7 +106,7 @@ export default function WaterClient() {
       if (s) {
         setSettingForm({ flowRate: String(s.flowRate), headCount: String(s.headCount) });
       }
-      setRecords(r);
+      setAllRecords(r);
       setStressPeriods(sp);
       setSettingDirty(false);
     } catch (e) { console.error(e); }
@@ -169,6 +171,7 @@ export default function WaterClient() {
         liters,
         growthStage: form.growthStage,
         zone: form.zone,
+        year: selectedYear,
         createdAt: Date.now(),
       });
       setForm({
@@ -185,6 +188,12 @@ export default function WaterClient() {
   };
 
   // ── ข้อมูลปฏิทิน ──
+  // กรองเฉพาะบันทึกของปีที่เลือก (รอบการเก็บเกี่ยว)
+  const records = useMemo(
+    () => allRecords.filter(r => getRecordYear(r) === selectedYear),
+    [allRecords, selectedYear]
+  );
+
   const recordsByDate = useMemo(() => {
     const m = new Map<string, WaterRecord[]>();
     for (const r of records) {

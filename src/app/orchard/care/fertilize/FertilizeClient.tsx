@@ -12,6 +12,7 @@ import {
   type Orchard, type FertilizerRecord, type GrowthStage,
   type NutrientItemRecord, type MedicineUnit,
 } from '@/lib/firebase';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import { Leaf, Trash2, ChevronLeft, ChevronRight, X, Plus } from 'lucide-react';
 import SubPageHeader from '../../_components/SubPageHeader';
 
@@ -24,9 +25,10 @@ export default function FertilizeClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [records, setRecords] = useState<FertilizerRecord[]>([]);
+  const [allRecords, setAllRecords] = useState<FertilizerRecord[]>([]);
   const [stocks, setStocks] = useState<NutrientItemRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,7 +55,7 @@ export default function FertilizeClient() {
     const unsubs: Array<() => void> = [
       subscribeOrchard(orchardId, setOrchard),
       subscribeCollection<FertilizerRecord>('fertilizerRecords', orchardId, (items) => {
-        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+        setAllRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
       }),
       subscribeCollection<NutrientItemRecord>('nutrientItems', orchardId, (items) => {
         setStocks(items.filter(it => it.type === 'fertilizer' || it.type === 'bioproduct').sort((a, b) => b.createdAt - a.createdAt));
@@ -73,13 +75,19 @@ export default function FertilizeClient() {
         getNutrientItems(orchardId),
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
-      setRecords(r);
+      setAllRecords(r);
       setStocks(fertItems.filter(it => it.type === 'fertilizer' || it.type === 'bioproduct'));
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
 
   // ── ปฏิทิน ──
+  // กรองเฉพาะบันทึกของปีที่เลือก (รอบการเก็บเกี่ยว)
+  const records = useMemo(
+    () => allRecords.filter(r => getRecordYear(r) === selectedYear),
+    [allRecords, selectedYear]
+  );
+
   const recordsByDate = useMemo(() => {
     const m = new Map<string, FertilizerRecord[]>();
     for (const r of records) {
@@ -143,6 +151,7 @@ export default function FertilizeClient() {
         amount: used,
         unit: selectedStock.unit,
         note: form.note,
+        year: selectedYear,
         createdAt: Date.now(),
       });
 

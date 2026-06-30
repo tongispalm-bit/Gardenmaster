@@ -163,6 +163,8 @@ export type WaterRecord = {
   liters: number;
   growthStage: DurianGrowthStage;
   zone?: 'all' | 'A' | 'B';
+  /** ปี พ.ศ. ของรอบการเก็บเกี่ยว */
+  year?: number;
   createdAt: number;
 };
 
@@ -228,6 +230,8 @@ export type FertilizerRecord = {
   amount: number;
   unit: string;
   note?: string;
+  /** ปี พ.ศ. ของรอบการเก็บเกี่ยว */
+  year?: number;
   createdAt: number;
 };
 
@@ -259,6 +263,8 @@ export type SprayRecord = {
   pestDisease: string;
   medicines: SprayMedicine[];
   note: string;
+  /** ปี พ.ศ. ของรอบการเก็บเกี่ยว */
+  year?: number;
   createdAt: number;
 };
 
@@ -326,6 +332,8 @@ export type GeneralExpense = {
   customWork: string;
   amount: number;
   note: string;
+  /** ปี พ.ศ. ของรอบการเก็บเกี่ยว */
+  year?: number;
   createdAt: number;
 };
 
@@ -338,6 +346,8 @@ export type UpgradeExpense = {
   item: string;
   amount: number;
   note: string;
+  /** ปี พ.ศ. ของรอบการเก็บเกี่ยว */
+  year?: number;
   createdAt: number;
 };
 
@@ -372,6 +382,8 @@ export type SaleRecord = {
   cutCost: number;
   netAmount: number;
   note: string;
+  /** ปี พ.ศ. ของรอบการเก็บเกี่ยว */
+  year?: number;
   createdAt: number;
 };
 

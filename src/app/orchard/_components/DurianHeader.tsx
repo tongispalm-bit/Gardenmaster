@@ -72,8 +72,9 @@ export default function DurianHeader({
   return (
     <>
       <div className="sticky top-0 z-40">
-        <header className="text-white px-2.5" style={{ backgroundColor: orchardColor }}>
-          <div className="flex items-center gap-1 h-[72px]">
+        <header className="text-white px-2.5 pb-2" style={{ backgroundColor: orchardColor }}>
+          {/* แถวบน: บ้าน · ชื่อสวน+sync · โปรไฟล์ · ธีม */}
+          <div className="flex items-center gap-1 h-[60px]">
             {/* ซ้าย: ปุ่มบ้าน → หน้าผังสวน (หน้าแรกของสวนทุเรียนหลังบ้าน) */}
             <button
               onClick={() => router.push(`/orchard/farm-map?id=${orchardId}`)}
@@ -86,8 +87,8 @@ export default function DurianHeader({
             {/* กลาง: ชื่อสวน + สถานะ sync */}
             <div className="flex-1 min-w-0 px-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-xl leading-none">{orchardIcon}</span>
-                <span className="font-bold text-lg leading-tight truncate">{orchardName}</span>
+                <span className="text-xl leading-none flex-shrink-0">{orchardIcon}</span>
+                <span className="font-bold text-lg leading-tight">{orchardName}</span>
               </div>
               <div className="flex items-center gap-1 ml-0.5 mt-0.5">
                 <span
@@ -121,47 +122,6 @@ export default function DurianHeader({
               )}
             </button>
 
-            {/* รอบปี pill + dropdown */}
-            {showYear && (
-              <div className="relative flex-shrink-0" ref={yearRef}>
-                <button
-                  onClick={() => setYearOpen((v) => !v)}
-                  className="flex items-center gap-1 bg-white/20 hover:bg-white/30 active:bg-white/40 rounded-full px-2.5 h-9 transition-colors"
-                  title="เปลี่ยนรอบปีเก็บเกี่ยว"
-                >
-                  <Calendar size={15} />
-                  <span className="text-xs font-bold">{year}</span>
-                  <ChevronDown size={13} />
-                </button>
-                {yearOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
-                    <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold border-b border-emerald-100 dark:border-emerald-800">
-                      เลือกรอบปีเก็บเกี่ยว
-                    </div>
-                    <div className="py-1">
-                      {HARVEST_YEAR_OPTIONS.map((y) => {
-                        const active = y === year;
-                        return (
-                          <button
-                            key={y}
-                            onClick={() => { setYear(y); setYearOpen(false); }}
-                            className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors ${
-                              active
-                                ? 'font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
-                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                            }`}
-                          >
-                            ปี พ.ศ. {y}
-                            {active && <Check size={14} />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* ธีม (ขวาสุด) */}
             <button
               onClick={toggleTheme}
@@ -171,6 +131,47 @@ export default function DurianHeader({
               {mounted && isDark ? <Sun size={22} /> : <Moon size={22} />}
             </button>
           </div>
+
+          {/* แถวล่าง: pill รอบปีเก็บเกี่ยว */}
+          {showYear && (
+            <div className="relative" ref={yearRef}>
+              <button
+                onClick={() => setYearOpen((v) => !v)}
+                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 active:bg-white/30 rounded-xl px-3 h-9 w-full transition-colors"
+                title="เปลี่ยนรอบปีเก็บเกี่ยว"
+              >
+                <Calendar size={15} className="flex-shrink-0" />
+                <span className="text-xs font-bold">รอบเก็บเกี่ยว ปี พ.ศ. {year}</span>
+                <ChevronDown size={14} className="ml-auto flex-shrink-0" />
+              </button>
+              {yearOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+                  <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold border-b border-emerald-100 dark:border-emerald-800">
+                    เลือกรอบปีเก็บเกี่ยว
+                  </div>
+                  <div className="py-1">
+                    {HARVEST_YEAR_OPTIONS.map((y) => {
+                      const active = y === year;
+                      return (
+                        <button
+                          key={y}
+                          onClick={() => { setYear(y); setYearOpen(false); }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors ${
+                            active
+                              ? 'font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
+                              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                          }`}
+                        >
+                          ปี พ.ศ. {y}
+                          {active && <Check size={14} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         <SubMenuTabs activeTab={activeTab} orchardId={orchardId} orchardName={orchardName} />

@@ -15,6 +15,7 @@ import {
   type WorkType,
 } from '@/lib/firebase';
 import { BarChart3, Trash2, X, Plus, ListChecks } from 'lucide-react';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import SubPageHeader from '../_components/SubPageHeader';
 
 const WORK_TYPES = Object.entries(WORK_TYPE_LABEL) as [WorkType, string][];
@@ -28,9 +29,10 @@ export default function ExpenseClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [records, setRecords] = useState<GeneralExpense[]>([]);
+  const [allRecords, setAllRecords] = useState<GeneralExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +57,7 @@ export default function ExpenseClient() {
     const unsubs: Array<() => void> = [
       subscribeOrchard(orchardId, setOrchard),
       subscribeCollection<GeneralExpense>('generalExpenses', orchardId, (items) => {
-        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+        setAllRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
       }),
     ];
 
@@ -71,7 +73,7 @@ export default function ExpenseClient() {
         getGeneralExpenses(orchardId),
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
-      setRecords(data);
+      setAllRecords(data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -88,6 +90,7 @@ export default function ExpenseClient() {
         customWork: form.workType === 'other' ? form.customWork.trim() : '',
         amount: Number(form.amount),
         note: form.note,
+        year: selectedYear,
         createdAt: Date.now(),
       });
       setForm({ date: now.toISOString().split('T')[0], workType: 'trim_tree', customWork: '', amount: '', note: '' });
@@ -100,6 +103,12 @@ export default function ExpenseClient() {
   // ชื่อแสดงของประเภทงาน
   const workLabel = (r: GeneralExpense) =>
     r.workType === 'other' && r.customWork ? r.customWork : WORK_TYPE_LABEL[r.workType];
+
+  // กรองเฉพาะบันทึกของปีที่เลือก (รอบการเก็บเกี่ยว)
+  const records = useMemo(
+    () => allRecords.filter(r => getRecordYear(r) === selectedYear),
+    [allRecords, selectedYear]
+  );
 
   // กรองตามเดือน
   const filteredRecords = useMemo(

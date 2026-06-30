@@ -13,6 +13,7 @@ import {
   type UpgradeExpense,
 } from '@/lib/firebase';
 import { Wrench, Trash2, X, Plus } from 'lucide-react';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import SubPageHeader from '../_components/SubPageHeader';
 
 const THAI_MONTHS = [
@@ -24,9 +25,10 @@ export default function UpgradeClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [records, setRecords] = useState<UpgradeExpense[]>([]);
+  const [allRecords, setAllRecords] = useState<UpgradeExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -46,7 +48,7 @@ export default function UpgradeClient() {
     const unsubs: Array<() => void> = [
       subscribeOrchard(orchardId, setOrchard),
       subscribeCollection<UpgradeExpense>('upgradeExpenses', orchardId, (items) => {
-        setRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
+        setAllRecords([...items].sort((a, b) => b.createdAt - a.createdAt));
       }),
     ];
 
@@ -62,7 +64,7 @@ export default function UpgradeClient() {
         getUpgradeExpenses(orchardId),
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
-      setRecords(data);
+      setAllRecords(data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -77,6 +79,7 @@ export default function UpgradeClient() {
         item: form.item.trim(),
         amount: Number(form.amount),
         note: form.note,
+        year: selectedYear,
         createdAt: Date.now(),
       });
       setForm({ date: now.toISOString().split('T')[0], item: '', amount: '', note: '' });
@@ -85,6 +88,12 @@ export default function UpgradeClient() {
     } catch { alert('บันทึกไม่สำเร็จ!'); }
     finally { setSaving(false); }
   };
+
+  // กรองเฉพาะบันทึกของปีที่เลือก (รอบการเก็บเกี่ยว)
+  const records = useMemo(
+    () => allRecords.filter(r => getRecordYear(r) === selectedYear),
+    [allRecords, selectedYear]
+  );
 
   const totalAll = useMemo(() => records.reduce((s, r) => s + r.amount, 0), [records]);
 
