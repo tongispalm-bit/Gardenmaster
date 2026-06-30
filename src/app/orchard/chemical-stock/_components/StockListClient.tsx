@@ -169,6 +169,7 @@ export default function StockListClient({
   const [items, setItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
@@ -386,22 +387,68 @@ export default function StockListClient({
     setShowModal(true);
   };
 
-  // Photo handler — แปลงเป็น base64
-  const handlePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const remaining = 6 - form.photos.length;
-    const toProcess = files.slice(0, remaining);
-    toProcess.forEach(file => {
+  // แปลงไฟล์รูป 1 ไฟล์ → ย่อขนาด + เข้ารหัสเป็น WebP (fallback JPEG)
+  const fileToWebp = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = ev => {
-        setForm(prev => ({
-          ...prev,
-          photos: [...prev.photos, ev.target?.result as string],
-        }));
+        const img = new Image();
+        img.onload = () => {
+          try {
+            let w = img.width;
+            let h = img.height;
+            const max = 600;
+            if (w > max || h > max) {
+              if (w > h) { h = (h * max) / w; w = max; }
+              else { w = (w * max) / h; h = max; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(w);
+            canvas.height = Math.round(h);
+            const ctx = canvas.getContext('2d', { alpha: false });
+            if (!ctx) { reject(new Error('Canvas not supported')); return; }
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            let dataUrl = canvas.toDataURL('image/webp', 0.8);
+            if (!dataUrl.startsWith('data:image/webp')) {
+              dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            }
+            resolve(dataUrl);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.onerror = () => reject(new Error('โหลดรูปไม่ได้'));
+        img.src = ev.target?.result as string;
       };
+      reader.onerror = () => reject(new Error('อ่านไฟล์ไม่ได้'));
       reader.readAsDataURL(file);
     });
-    e.target.value = '';
+
+  // Photo handler — ย่อขนาดและแปลงเป็น WebP ก่อนเก็บ
+  const handlePhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    const remaining = 6 - form.photos.length;
+    const toProcess = files.slice(0, remaining);
+    if (toProcess.length === 0) { e.target.value = ''; return; }
+    setProcessing(true);
+    try {
+      for (const file of toProcess) {
+        try {
+          const dataUrl = await fileToWebp(file);
+          setForm(prev => ({ ...prev, photos: [...prev.photos, dataUrl] }));
+        } catch (err) {
+          console.error('แปลงรูปไม่สำเร็จ:', err);
+          alert('❌ ไม่สามารถประมวลผลรูปได้\nลองรูปอื่นหรือเปลี่ยนเบราว์เซอร์');
+        }
+      }
+    } finally {
+      setProcessing(false);
+      e.target.value = '';
+    }
   };
 
   const removePhoto = (idx: number) => {
@@ -910,6 +957,7 @@ export default function StockListClient({
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
                   รูปภาพ ({form.photos.length}/6)
+                  {processing && <span className="ml-1 font-normal text-amber-500">กำลังแปลงรูป...</span>}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {form.photos.map((p, i) => (
@@ -927,25 +975,27 @@ export default function StockListClient({
                   {form.photos.length < 6 && (
                     <>
                       {/* ถ่ายรูป (เปิดกล้องบนมือถือ) */}
-                      <label className={`w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-${accent}-400 hover:text-${accent}-400 transition-colors cursor-pointer`}>
+                      <label className={`w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-${accent}-400 hover:text-${accent}-400 transition-colors ${processing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                         <Camera size={18} />
                         <span className="text-[9px] mt-0.5">ถ่ายรูป</span>
                         <input
                           type="file"
                           accept="image/*"
                           capture="environment"
+                          disabled={processing}
                           className="hidden"
                           onChange={handlePhotos}
                         />
                       </label>
                       {/* อัพโหลดจากแกลเลอรี่ */}
-                      <label className={`w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-${accent}-400 hover:text-${accent}-400 transition-colors cursor-pointer`}>
+                      <label className={`w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-400 hover:border-${accent}-400 hover:text-${accent}-400 transition-colors ${processing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                         <Plus size={18} />
                         <span className="text-[9px] mt-0.5">อัพโหลด</span>
                         <input
                           type="file"
                           accept="image/*"
                           multiple
+                          disabled={processing}
                           className="hidden"
                           onChange={handlePhotos}
                         />
@@ -953,6 +1003,9 @@ export default function StockListClient({
                     </>
                   )}
                 </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
+                  💡 รูปถูกย่อเหลือ 600px และแปลงเป็น WebP อัตโนมัติ (สูงสุด 6 รูป)
+                </p>
               </div>
 
               {/* หมายเหตุ — ซ่อนถ้าใช้โหมดวัตถุประสงค์ (เพราะใช้ note เป็นวัตถุประสงค์แล้ว) */}
@@ -979,10 +1032,10 @@ export default function StockListClient({
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={saving}
+                  disabled={saving || processing}
                   className={`flex-1 py-3 ${a.primaryBg} disabled:opacity-50 text-white rounded-xl font-bold text-sm`}
                 >
-                  {saving ? 'กำลังบันทึก...' : editingId ? 'บันทึกการแก้ไข' : 'บันทึก'}
+                  {saving ? 'กำลังบันทึก...' : processing ? 'กำลังแปลงรูป...' : editingId ? 'บันทึกการแก้ไข' : 'บันทึก'}
                 </button>
               </div>
             </div>
