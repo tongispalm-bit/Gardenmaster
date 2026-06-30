@@ -12,7 +12,7 @@ import {
 } from '@/lib/firebase';
 import { Plus, Trash2, Pencil, X, Camera, Flame, Snowflake, ChevronLeft, ChevronRight, Calendar, type LucideIcon } from 'lucide-react';
 import SubPageHeader from '../../_components/SubPageHeader';
-import ImageLightbox from '../../farm-map/ImageLightbox';
+import StockImageModal from './StockImageModal';
 
 // ── Generic shape ที่ Medicine และ Nutrient ใช้ร่วมกัน ──
 export type StockItem = {
@@ -1187,7 +1187,7 @@ export default function StockListClient({
 
       {/* Image Lightbox */}
       {showLightbox && (
-        <ImageLightbox
+        <StockImageModal
           images={lightboxImages}
           initialIndex={lightboxIndex}
           onClose={() => setShowLightbox(false)}
