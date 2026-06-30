@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden Master — Header 5 แบบ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Noto Sans Thai', sans-serif; }
+  .phone {
+    width: 390px; max-width: 100%;
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,.18);
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+  .label { font-size: 13px; }
+</style>
+</head>
+<body class="bg-slate-100 p-4 sm:p-8">
+
+<div class="max-w-6xl mx-auto">
+  <h1 class="text-2xl font-extrabold text-slate-800 mb-1">Header — 5 แบบให้เลือก</h1>
+  <p class="text-slate-500 mb-6 label">สวนทุเรียนหลังบ้าน · ทุกแบบ: สูง 64pt, ปุ่มแตะ 44×44, ฟอนต์ 18–20pt</p>
+
+  <div class="grid md:grid-cols-2 gap-8">
+
+    <!-- ========== แบบ 1: Minimal Flat (ปัจจุบัน) ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-slate-800 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 1</span>
+        <span class="font-bold text-slate-700">Minimal Flat — เรียบ สีพื้นเดียว</span>
+      </div>
+      <p class="text-slate-500 label mb-3">สีพื้นทึบตามสีสวน ไอคอน+ชื่อกลางจอ สะอาดตา (สไตล์ปัจจุบัน)</p>
+      <div class="phone">
+        <header class="text-white px-2.5" style="background:#27ae60">
+          <div class="flex items-center justify-between" style="height:64px">
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg>
+            </button>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🌳</span>
+              <span class="font-bold text-lg">ทุเรียนหลังบ้าน</span>
+            </div>
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+    <!-- ========== แบบ 2: Gradient + Subtitle ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-slate-800 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 2</span>
+        <span class="font-bold text-slate-700">Gradient + คำบรรยาย</span>
+      </div>
+      <p class="text-slate-500 label mb-3">ไล่เฉดสี + ชื่อชิดซ้ายพร้อมบรรทัดรอง (เช่น “91 ต้น”) ดูพรีเมียม</p>
+      <div class="phone">
+        <header class="text-white px-2.5" style="background:linear-gradient(135deg,#27ae60,#1e8449)">
+          <div class="flex items-center justify-between" style="height:64px">
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex-1 px-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xl">🌳</span>
+                <span class="font-extrabold text-lg leading-tight">ทุเรียนหลังบ้าน</span>
+              </div>
+              <p class="text-[11px] text-white/75 leading-tight ml-0.5">ผังสวน · 91 ต้น</p>
+            </div>
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+    <!-- ========== แบบ 3: Avatar Chip ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-slate-800 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 3</span>
+        <span class="font-bold text-slate-700">Avatar Chip — ไอคอนวงกลม</span>
+      </div>
+      <p class="text-slate-500 label mb-3">ไอคอนสวนในวงกลมโปร่งแสง ชิดซ้าย ดูเป็นแบรนด์ มีปุ่มแอ็กชันขวา</p>
+      <div class="phone">
+        <header class="text-white px-2.5" style="background:#27ae60">
+          <div class="flex items-center justify-between" style="height:64px">
+            <div class="flex items-center gap-2.5">
+              <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+              </button>
+              <div class="flex items-center justify-center rounded-full bg-white/20" style="width:38px;height:38px">
+                <span class="text-xl">🌳</span>
+              </div>
+              <span class="font-bold text-lg">ทุเรียนหลังบ้าน</span>
+            </div>
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+    <!-- ========== แบบ 4: Title + Segmented Tabs ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-slate-800 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 4</span>
+        <span class="font-bold text-slate-700">Header + แท็บในตัว</span>
+      </div>
+      <p class="text-slate-500 label mb-3">รวมหัวข้อย่อย (pill tabs) ไว้ในแถบสีเลย ประหยัดพื้นที่จอ</p>
+      <div class="phone">
+        <header class="text-white px-2.5 pb-2" style="background:#27ae60">
+          <div class="flex items-center justify-between" style="height:56px">
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🌳</span>
+              <span class="font-bold text-lg">ทุเรียนหลังบ้าน</span>
+            </div>
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg>
+            </button>
+          </div>
+          <div class="flex gap-1.5 overflow-x-auto pb-0.5">
+            <span class="bg-white text-green-700 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">ผังสวน</span>
+            <span class="bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">การดูแล</span>
+            <span class="bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">ประวัติการป่วย</span>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+    <!-- ========== แบบ 5: Floating Glass Card ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-slate-800 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 5</span>
+        <span class="font-bold text-slate-700">Glass / Curved — โค้งมน + ปุ่มลอย</span>
+      </div>
+      <p class="text-slate-500 label mb-3">ขอบล่างโค้งใหญ่ ปุ่มเป็นการ์ดโปร่งแสง ดูนุ่ม ทันสมัย</p>
+      <div class="phone">
+        <header class="text-white px-3 rounded-b-3xl shadow-lg" style="background:linear-gradient(135deg,#2ecc71,#27ae60)">
+          <div class="flex items-center justify-between" style="height:64px">
+            <button class="flex items-center justify-center rounded-2xl bg-white/15 backdrop-blur hover:bg-white/25" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🌳</span>
+              <span class="font-extrabold text-lg tracking-tight">ทุเรียนหลังบ้าน</span>
+            </div>
+            <button class="flex items-center justify-center rounded-2xl bg-white/15 backdrop-blur hover:bg-white/25" style="width:44px;height:44px">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg>
+            </button>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="mt-10 bg-white rounded-2xl p-5 border border-slate-200">
+    <h2 class="font-bold text-slate-800 mb-3">เปรียบเทียบสรุป</h2>
+    <table class="w-full text-sm text-left border-collapse">
+      <thead>
+        <tr class="text-slate-500 border-b border-slate-200">
+          <th class="py-2 pr-3">แบบ</th><th class="py-2 pr-3">จุดเด่น</th><th class="py-2">เหมาะกับ</th>
+        </tr>
+      </thead>
+      <tbody class="text-slate-700">
+        <tr class="border-b border-slate-100"><td class="py-2 pr-3 font-bold">1 Minimal Flat</td><td class="py-2 pr-3">เรียบ เบา โหลดไว</td><td class="py-2">คงสไตล์เดิม เน้นความสะอาดตา</td></tr>
+        <tr class="border-b border-slate-100"><td class="py-2 pr-3 font-bold">2 Gradient+Subtitle</td><td class="py-2 pr-3">มีข้อมูลรอง ดูแพง</td><td class="py-2">หน้าที่อยากโชว์จำนวนต้น/สถานะ</td></tr>
+        <tr class="border-b border-slate-100"><td class="py-2 pr-3 font-bold">3 Avatar Chip</td><td class="py-2 pr-3">เป็นแบรนด์ จำง่าย</td><td class="py-2">เน้นเอกลักษณ์แต่ละสวน</td></tr>
+        <tr class="border-b border-slate-100"><td class="py-2 pr-3 font-bold">4 Header+Tabs</td><td class="py-2 pr-3">ประหยัดพื้นที่</td><td class="py-2">หน้าที่มีหลายแท็บย่อย</td></tr>
+        <tr><td class="py-2 pr-3 font-bold">5 Glass/Curved</td><td class="py-2 pr-3">นุ่ม ทันสมัย</td><td class="py-2">อยากให้ดูพรีเมียม friendly</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</body>
+</html>

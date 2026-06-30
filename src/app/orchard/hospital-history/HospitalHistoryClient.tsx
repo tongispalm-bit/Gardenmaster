@@ -11,9 +11,8 @@ import {
   type HospitalRecord,
   type Severity,
 } from '@/lib/firebase';
-import { Home, Moon, Sun, ChevronRight } from 'lucide-react';
-import { useTheme } from '@/lib/useTheme';
-import SubMenuTabs from '../_components/SubMenuTabs';
+import { ChevronRight } from 'lucide-react';
+import DurianHeader from '../_components/DurianHeader';
 import ImageViewerModal from '../_components/ImageViewerModal';
 
 const SEVERITY_BG: Record<Severity, { bg: string; bgDark: string; label: string; textColor: string }> = {
@@ -25,7 +24,6 @@ const SEVERITY_BG: Record<Severity, { bg: string; bgDark: string; label: string;
 export default function HospitalHistoryClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isDark, toggleTheme } = useTheme();
   const orchardId = searchParams.get('id') || '';
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
@@ -160,24 +158,13 @@ export default function HospitalHistoryClient() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-40">
-      <header className="text-white px-2.5" style={{ backgroundColor: orchard.color }}>
-        <div className="flex items-center justify-between h-16">
-          <button onClick={() => router.push('/')} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
-            <Home size={22} />
-          </button>
-          <div className="flex items-center gap-2 text-center">
-            <span className="text-2xl">{orchard.icon}</span>
-            <h1 className="text-lg font-bold">{orchard.name}</h1>
-          </div>
-          <button onClick={toggleTheme} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
-            {isDark ? <Sun size={22} /> : <Moon size={22} />}
-          </button>
-        </div>
-      </header>
-
-      <SubMenuTabs activeTab="hospital-history" orchardId={orchardId} orchardName={orchard.name} />
-      </div>
+      <DurianHeader
+        orchardId={orchardId}
+        orchardName={orchard.name}
+        orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
+        activeTab="hospital-history"
+      />
 
       <div className="px-3 sm:px-6 py-4 max-w-4xl mx-auto">
         {/* Title */}

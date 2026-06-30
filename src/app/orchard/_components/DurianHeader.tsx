@@ -1,0 +1,189 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Home, Moon, Sun, Calendar, Check, ChevronDown } from 'lucide-react';
+import { useTheme } from '@/lib/useTheme';
+import { useAuth } from '@/lib/useAuth';
+import { useHarvestYear, HARVEST_YEAR_OPTIONS } from '@/lib/useHarvestYear';
+import ProfileModal from '@/app/_components/ProfileModal';
+import SubMenuTabs from './SubMenuTabs';
+
+type Props = {
+  orchardId: string;
+  orchardName: string;
+  orchardColor: string;
+  orchardIcon: string;
+  /** id ของแท็บที่ active ใน SubMenuTabs */
+  activeTab: string;
+  /** แสดง pill รอบปีเก็บเกี่ยว (default: true) */
+  showYear?: boolean;
+};
+
+/**
+ * Header มาตรฐานสวนทุเรียนหลังบ้าน (ดีไซน์ 7A)
+ * เลย์เอาต์ฝั่งซ้าย → ขวา:
+ *   🏠 ปุ่มบ้าน (กลับหน้าผังสวน) · ชื่อสวน + สถานะ sync · 👤 โปรไฟล์ · 📅 รอบปี · 🌙 ธีม
+ * - ปุ่มแตะ 44×44, header สูง 64px, ฟอนต์ชื่อ 18px
+ * - ห่อ header + SubMenuTabs ใน sticky เดียวกัน
+ */
+export default function DurianHeader({
+  orchardId,
+  orchardName,
+  orchardColor,
+  orchardIcon,
+  activeTab,
+  showYear = true,
+}: Props) {
+  const router = useRouter();
+  const { isDark, toggleTheme, mounted } = useTheme();
+  const { user, refresh } = useAuth();
+  const { year, setYear } = useHarvestYear(orchardId);
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [yearOpen, setYearOpen] = useState(false);
+  const [online, setOnline] = useState(true);
+  const yearRef = useRef<HTMLDivElement>(null);
+
+  // สถานะออนไลน์/ออฟไลน์
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
+
+  // ปิด dropdown ปีเมื่อคลิกนอกพื้นที่
+  useEffect(() => {
+    if (!yearOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (yearRef.current && !yearRef.current.contains(e.target as Node)) {
+        setYearOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [yearOpen]);
+
+  return (
+    <>
+      <div className="sticky top-0 z-40">
+        <header className="text-white px-2" style={{ backgroundColor: orchardColor }}>
+          <div className="flex items-center gap-1 h-16">
+            {/* ซ้าย: ปุ่มบ้าน → หน้าผังสวน (หน้าแรกของสวนทุเรียนหลังบ้าน) */}
+            <button
+              onClick={() => router.push(`/orchard/farm-map?id=${orchardId}`)}
+              className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
+              title="หน้าผังสวน"
+            >
+              <Home size={22} />
+            </button>
+
+            {/* กลาง: ชื่อสวน + สถานะ sync */}
+            <div className="flex-1 min-w-0 px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-lg leading-none">{orchardIcon}</span>
+                <span className="font-bold text-lg leading-tight truncate">{orchardName}</span>
+              </div>
+              <div className="flex items-center gap-1 ml-0.5">
+                <span
+                  className={`inline-block w-1.5 h-1.5 rounded-full ${
+                    online ? 'bg-green-300 animate-pulse' : 'bg-slate-300'
+                  }`}
+                />
+                <span className="text-[11px] text-white/80 leading-tight">
+                  {online ? 'บันทึกแล้ว · ออนไลน์' : 'ออฟไลน์'}
+                </span>
+              </div>
+            </div>
+
+            {/* ขวา: โปรไฟล์ */}
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="w-[42px] h-11 flex items-center justify-center flex-shrink-0"
+              title="โปรไฟล์"
+            >
+              {user?.profileImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.profileImage}
+                  alt={user.displayName || user.username}
+                  className="w-9 h-9 rounded-full object-cover ring-2 ring-white/50"
+                />
+              ) : (
+                <span className="w-9 h-9 flex items-center justify-center rounded-full bg-white/25 ring-2 ring-white/40 text-sm font-extrabold">
+                  {(user?.displayName || user?.username || '?').slice(0, 1).toUpperCase()}
+                </span>
+              )}
+            </button>
+
+            {/* รอบปี pill + dropdown */}
+            {showYear && (
+              <div className="relative flex-shrink-0" ref={yearRef}>
+                <button
+                  onClick={() => setYearOpen((v) => !v)}
+                  className="flex items-center gap-1 bg-white/20 hover:bg-white/30 rounded-full px-2 h-[34px] transition-colors"
+                  title="เปลี่ยนรอบปีเก็บเกี่ยว"
+                >
+                  <Calendar size={14} />
+                  <span className="text-xs font-bold">{year}</span>
+                  <ChevronDown size={13} />
+                </button>
+                {yearOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-44 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+                    <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold border-b border-emerald-100 dark:border-emerald-800">
+                      เลือกรอบปีเก็บเกี่ยว
+                    </div>
+                    <div className="py-1">
+                      {HARVEST_YEAR_OPTIONS.map((y) => {
+                        const active = y === year;
+                        return (
+                          <button
+                            key={y}
+                            onClick={() => { setYear(y); setYearOpen(false); }}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-colors ${
+                              active
+                                ? 'font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
+                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                            }`}
+                          >
+                            ปี พ.ศ. {y}
+                            {active && <Check size={14} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ธีม (ขวาสุด) */}
+            <button
+              onClick={toggleTheme}
+              className="w-10 h-11 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
+              title={isDark ? 'โหมดสว่าง' : 'โหมดมืด'}
+            >
+              {mounted && isDark ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+          </div>
+        </header>
+
+        <SubMenuTabs activeTab={activeTab} orchardId={orchardId} orchardName={orchardName} />
+      </div>
+
+      {user && (
+        <ProfileModal
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          user={user}
+          onUpdated={() => { refresh(); setProfileOpen(false); }}
+        />
+      )}
+    </>
+  );
+}

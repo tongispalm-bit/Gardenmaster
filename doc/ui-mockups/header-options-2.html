@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden Master — Header ชุดที่ 2 (มีข้อมูล)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Noto Sans Thai', sans-serif; }
+  .phone {
+    width: 390px; max-width: 100%;
+    border-radius: 28px; overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,.18);
+    background: #f8fafc; border: 1px solid #e2e8f0;
+  }
+  .label { font-size: 13px; }
+  .ico { stroke: currentColor; stroke-width: 2; fill: none; }
+</style>
+</head>
+<body class="bg-slate-100 p-4 sm:p-8">
+<div class="max-w-6xl mx-auto">
+  <h1 class="text-2xl font-extrabold text-slate-800 mb-1">Header ชุดที่ 2 — เน้นข้อมูลในแถบ</h1>
+  <p class="text-slate-500 mb-2 label">สวนทุเรียนหลังบ้าน · สูง ~64–96pt · ปุ่มแตะ 44×44 · ฟอนต์ 18–20pt</p>
+  <p class="text-slate-400 mb-6 label">ข้อมูลที่ดึงมาจริง: จำนวนต้น · ปกติ/เฝ้าระวัง/ต้นกล้า · กำลังรักษา · โซน A/B · ปี พ.ศ.เก็บเกี่ยว · สถานะ sync</p>
+
+  <div class="grid md:grid-cols-2 gap-8">
+
+    <!-- ========== แบบ 6: Stat Strip — แถบสถิติใต้ชื่อ ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 6</span>
+        <span class="font-bold text-slate-700">Stat Strip — สถิติย่อใต้ชื่อ</span>
+      </div>
+      <p class="text-slate-500 label mb-3">ชื่อสวน + แถบตัวเลขเล็ก ๆ (รวม/ปกติ/เฝ้าระวัง/รักษา) ในแถบสีเลย เห็นภาพรวมทันที</p>
+      <div class="phone">
+        <header class="text-white px-2.5 pb-2.5" style="background:#27ae60">
+          <div class="flex items-center justify-between" style="height:56px">
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+            <div class="flex items-center gap-2"><span class="text-xl">🌳</span><span class="font-bold text-lg">ทุเรียนหลังบ้าน</span></div>
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg></button>
+          </div>
+          <div class="flex gap-1.5">
+            <div class="flex-1 bg-white/15 rounded-lg py-1 text-center"><p class="text-[10px] text-white/70 leading-none">ทั้งหมด</p><p class="font-extrabold text-sm leading-tight">91</p></div>
+            <div class="flex-1 bg-white/15 rounded-lg py-1 text-center"><p class="text-[10px] text-white/70 leading-none">ปกติ</p><p class="font-extrabold text-sm leading-tight">78</p></div>
+            <div class="flex-1 bg-white/15 rounded-lg py-1 text-center"><p class="text-[10px] text-white/70 leading-none">เฝ้าระวัง</p><p class="font-extrabold text-sm leading-tight">9</p></div>
+            <div class="flex-1 bg-rose-500/40 rounded-lg py-1 text-center"><p class="text-[10px] text-white/80 leading-none">รักษา</p><p class="font-extrabold text-sm leading-tight">4</p></div>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+    <!-- ========== แบบ 7: Year + Sync — รอบปี + สถานะข้อมูล ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 7</span>
+        <span class="font-bold text-slate-700">Year Pill + Sync — รอบปี & สถานะ</span>
+      </div>
+      <p class="text-slate-500 label mb-3">โชว์ปี พ.ศ.เก็บเกี่ยวเป็น pill กดเปลี่ยนได้ + จุดสถานะ sync (ออนไลน์/บันทึกแล้ว)</p>
+      <div class="phone">
+        <header class="text-white px-2.5" style="background:#27ae60">
+          <div class="flex items-center justify-between" style="height:64px">
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+            <div class="flex-1 px-2">
+              <div class="flex items-center gap-1.5"><span class="text-lg">🌳</span><span class="font-bold text-lg leading-tight">ทุเรียนหลังบ้าน</span></div>
+              <div class="flex items-center gap-1 ml-0.5">
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-300"></span>
+                <span class="text-[11px] text-white/80 leading-tight">บันทึกแล้ว · ออนไลน์</span>
+              </div>
+            </div>
+            <button class="flex items-center gap-1 bg-white/20 rounded-full px-2.5 hover:bg-white/30" style="height:44px">
+              <svg width="16" height="16" class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span class="text-xs font-bold">2569</span>
+            </button>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+    <!-- ========== แบบ 8: Alert Banner — แจ้งเตือนต้นป่วย ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 8</span>
+        <span class="font-bold text-slate-700">Alert Banner — เตือนต้นกำลังรักษา</span>
+      </div>
+      <p class="text-slate-500 label mb-3">Header ปกติ + แถบเตือนสีแดงต่อท้ายเมื่อมีต้นป่วย กดไปหน้าห้องพยาบาลได้</p>
+      <div class="phone">
+        <header class="text-white px-2.5" style="background:#27ae60">
+          <div class="flex items-center justify-between" style="height:64px">
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+            <div class="flex items-center gap-2"><span class="text-xl">🌳</span><span class="font-bold text-lg">ทุเรียนหลังบ้าน</span></div>
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg></button>
+          </div>
+        </header>
+        <button class="w-full flex items-center gap-2 bg-rose-50 border-b border-rose-200 px-4 py-2 text-left">
+          <span class="text-base">🏥</span>
+          <span class="text-xs font-bold text-rose-700 flex-1">มี 4 ต้นกำลังรักษา · แตะดูรายละเอียด</span>
+          <svg width="16" height="16" class="ico text-rose-400" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+    <!-- ========== แบบ 9: Breadcrumb + Progress — เส้นทาง + ความคืบหน้า ========== -->
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 9</span>
+        <span class="font-bold text-slate-700">Breadcrumb + สุขภาพสวน</span>
+      </div>
+      <p class="text-slate-500 label mb-3">บอกตำแหน่ง (สวน › ผังสวน) + แถบ % สุขภาพสวน (ต้นปกติเทียบทั้งหมด)</p>
+      <div class="phone">
+        <header class="text-white px-2.5 pb-2.5" style="background:linear-gradient(135deg,#27ae60,#1e8449)">
+          <div class="flex items-center justify-between" style="height:52px">
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+            <div class="flex-1 px-1">
+              <p class="text-[11px] text-white/70 leading-none">ทุเรียนหลังบ้าน ›</p>
+              <div class="flex items-center gap-1.5 mt-0.5"><span class="text-base">📍</span><span class="font-bold text-lg leading-tight">ผังสวน</span></div>
+            </div>
+            <button class="flex items-center justify-center rounded-full hover:bg-white/20" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg></button>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-[11px] mb-1"><span class="text-white/80">สุขภาพสวน</span><span class="font-bold">78/91 ต้นปกติ (86%)</span></div>
+            <div class="h-1.5 rounded-full bg-white/25 overflow-hidden"><div class="h-full bg-green-200 rounded-full" style="width:86%"></div></div>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+    <!-- ========== แบบ 10: Dashboard Header — การ์ดข้อมูลเต็ม ========== -->
+    <div class="md:col-span-2">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded">แบบ 10</span>
+        <span class="font-bold text-slate-700">Dashboard Header — สรุปครบในหัว</span>
+      </div>
+      <p class="text-slate-500 label mb-3">Header เต็มรูปแบบ: ชื่อ+รอบปี + การ์ดสรุปโซน/สถานะ รวมหน้าสรุปไว้บนสุด ไม่ต้องเลื่อน</p>
+      <div class="phone" style="width:420px">
+        <header class="text-white px-3 pb-3 rounded-b-3xl shadow-lg" style="background:linear-gradient(135deg,#2ecc71,#1e8449)">
+          <div class="flex items-center justify-between" style="height:60px">
+            <button class="flex items-center justify-center rounded-2xl bg-white/15 hover:bg-white/25" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg></button>
+            <div class="text-center"><div class="flex items-center gap-1.5 justify-center"><span class="text-xl">🌳</span><span class="font-extrabold text-lg">ทุเรียนหลังบ้าน</span></div><p class="text-[11px] text-white/75">รอบเก็บเกี่ยว ปี พ.ศ. 2569</p></div>
+            <button class="flex items-center justify-center rounded-2xl bg-white/15 hover:bg-white/25" style="width:44px;height:44px"><svg width="22" height="22" class="ico" viewBox="0 0 24 24"><path d="M12 3a6 6 0 009 9 9 9 0 11-9-9z"/></svg></button>
+          </div>
+          <div class="grid grid-cols-4 gap-2 mt-1">
+            <div class="bg-white/15 rounded-xl py-1.5 text-center"><p class="text-[10px] text-white/70">ทั้งหมด</p><p class="font-extrabold text-base">91</p></div>
+            <div class="bg-white/15 rounded-xl py-1.5 text-center"><p class="text-[10px] text-white/70">ปกติ</p><p class="font-extrabold text-base">78</p></div>
+            <div class="bg-white/15 rounded-xl py-1.5 text-center"><p class="text-[10px] text-white/70">เฝ้าระวัง</p><p class="font-extrabold text-base">9</p></div>
+            <div class="bg-rose-500/40 rounded-xl py-1.5 text-center"><p class="text-[10px] text-white/80">รักษา</p><p class="font-extrabold text-base">4</p></div>
+          </div>
+          <div class="flex gap-2 mt-2">
+            <div class="flex-1 bg-violet-400/30 rounded-lg py-1 px-2 flex items-center justify-between"><span class="text-[11px] text-white/85">โซน A</span><span class="font-bold text-sm">45</span></div>
+            <div class="flex-1 bg-cyan-400/30 rounded-lg py-1 px-2 flex items-center justify-between"><span class="text-[11px] text-white/85">โซน B</span><span class="font-bold text-sm">46</span></div>
+          </div>
+        </header>
+        <div class="px-4 py-6 text-slate-400 text-sm text-center">เนื้อหาหน้า…</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="mt-10 bg-white rounded-2xl p-5 border border-slate-200">
+    <h2 class="font-bold text-slate-800 mb-3">ข้อมูลที่แนะนำให้มีใน Header</h2>
+    <ul class="text-sm text-slate-700 space-y-1.5 list-disc pl-5">
+      <li><b>ชื่อสวน + ไอคอน</b> — ระบุว่ากำลังอยู่สวนไหน (มีทุกแบบ)</li>
+      <li><b>ปุ่มย้อนกลับ / หน้าแรก</b> — นำทาง (มีทุกแบบ)</li>
+      <li><b>สลับธีมสว่าง/มืด</b> — ใช้บ่อย ควรเข้าถึงได้เสมอ</li>
+      <li><b>รอบปี พ.ศ.เก็บเกี่ยว</b> — สำคัญมากเพราะข้อมูลผูกกับรอบปี (แบบ 7, 10)</li>
+      <li><b>สรุปจำนวนต้น/สถานะ</b> — รวม/ปกติ/เฝ้าระวัง/รักษา ดูภาพรวมไว (แบบ 6, 10)</li>
+      <li><b>แจ้งเตือนต้นป่วย</b> — เด่นชัดเมื่อมีต้นกำลังรักษา (แบบ 8)</li>
+      <li><b>สถานะ sync/ออนไลน์</b> — ให้มั่นใจว่าข้อมูลถูกบันทึกแล้ว (แบบ 7)</li>
+      <li><b>สุขภาพสวน %</b> — ตัวชี้วัดรวมแบบเห็นง่าย (แบบ 9)</li>
+      <li><b>Breadcrumb</b> — บอกตำแหน่งในเมนูย่อย (แบบ 9)</li>
+    </ul>
+    <p class="text-xs text-slate-400 mt-3">💡 แนะนำ: ใช้แบบ 1/7 เป็น header มาตรฐานทุกหน้า แล้วใช้แบบ 10 (Dashboard) เฉพาะหน้าผังสวน เพราะมีข้อมูลสรุปอยู่แล้ว</p>
+  </div>
+</div>
+</body>
+</html>

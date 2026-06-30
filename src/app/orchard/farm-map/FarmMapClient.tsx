@@ -21,11 +21,10 @@ import {
 import {
   X, Home, Moon, Sun,
   Edit3, MapPin, Plus, Minus, Eye, Trash2,
-  Menu, CalendarDays,
 } from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
-import { useHarvestYear, HARVEST_YEAR_OPTIONS } from '@/lib/useHarvestYear';
 import SubMenuTabs from '../_components/SubMenuTabs';
+import DurianHeader from '../_components/DurianHeader';
 import TreeInfoModal from './TreeInfoModal';
 
 // ── Constants ────────────────────────────────────────────────
@@ -72,8 +71,6 @@ export default function FarmMapClient() {
   const searchParams = useSearchParams();
   const { isDark, toggleTheme } = useTheme();
   const orchardId = searchParams.get('id') || '';
-  const { year: selectedYear, setYear: setSelectedYear } = useHarvestYear(orchardId);
-  const [showYearBar, setShowYearBar] = useState(false);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [trees, setTrees] = useState<TreeProfile[]>([]);
@@ -460,52 +457,33 @@ export default function FarmMapClient() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8 overflow-x-clip">
-      <div className="sticky top-0 z-40">
-      <header className="text-white px-2.5" style={{ backgroundColor: orchard.color }}>
-        <div className="flex items-center justify-between h-16">
-          <button onClick={() => router.push('/')} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
-            <Home size={22} />
-          </button>
-          <div className="flex items-center gap-2 text-center">
-            <span className="text-2xl">{orchard.icon}</span>
-            <h1 className="text-lg font-bold">{orchard.name}</h1>
-          </div>
-          <div className="flex items-center">
-            {!isMango && (
-              <button
-                onClick={() => setShowYearBar(v => !v)}
-                className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full"
-                title="เลือกปี พ.ศ."
-              >
-                <Menu size={22} />
+      {isMango ? (
+        <div className="sticky top-0 z-40">
+          <header className="text-white px-2.5" style={{ backgroundColor: orchard.color }}>
+            <div className="flex items-center justify-between h-16">
+              <button onClick={() => router.push('/')} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
+                <Home size={22} />
               </button>
-            )}
-            <button onClick={toggleTheme} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
-              {isDark ? <Sun size={22} /> : <Moon size={22} />}
-            </button>
-          </div>
+              <div className="flex items-center gap-2 text-center">
+                <span className="text-2xl">{orchard.icon}</span>
+                <h1 className="text-lg font-bold">{orchard.name}</h1>
+              </div>
+              <button onClick={toggleTheme} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
+                {isDark ? <Sun size={22} /> : <Moon size={22} />}
+              </button>
+            </div>
+          </header>
+          <SubMenuTabs activeTab="farm-map" orchardId={orchardId} orchardName={orchard.name} />
         </div>
-      </header>
-
-      {/* ── แถบเลือกปี พ.ศ. (รอบการเก็บเกี่ยว) ── */}
-      {!isMango && showYearBar && (
-        <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-2.5">
-          <div className="max-w-6xl mx-auto flex items-center gap-3">
-            <CalendarDays size={20} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl outline-none focus:ring-2 ring-amber-500 text-sm font-bold text-slate-800 dark:text-white"
-            >
-              {HARVEST_YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>ปี พ.ศ. {y}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+      ) : (
+        <DurianHeader
+          orchardId={orchardId}
+          orchardName={orchard.name}
+          orchardColor={orchard.color}
+          orchardIcon={orchard.icon}
+          activeTab="farm-map"
+        />
       )}
-      <SubMenuTabs activeTab="farm-map" orchardId={orchardId} orchardName={orchard.name} />
-      </div>
 
       <div className="px-3 sm:px-6 py-3 max-w-6xl mx-auto">
         {/* Summary Cards */}
