@@ -81,12 +81,25 @@ export default function UpdatePrompt() {
   }, []);
 
   const handleUpdate = () => {
-    if (!waitingWorker) {
-      window.location.reload();
-      return;
+    // ส่งสัญญาณให้ SW ที่รออยู่ activate (ถ้ามี)
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     }
-    waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-    // controllerchange event จะ trigger reload อัตโนมัติ
+    // ลบ cache ทั้งหมดเพื่อบังคับโหลดไฟล์ใหม่ แล้ว reload
+    // (fallback กรณี controllerchange ไม่ยิง เช่น SW activate ไปแล้ว)
+    const forceReload = async () => {
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+      } catch {
+        /* ignore */
+      }
+      window.location.reload();
+    };
+    // ให้เวลา controllerchange ทำงานก่อน ถ้าไม่ reload ใน 800ms → บังคับเอง
+    setTimeout(forceReload, 800);
   };
 
   if (!showPrompt) return null;
