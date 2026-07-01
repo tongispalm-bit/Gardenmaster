@@ -184,6 +184,7 @@ export default function DurianFruitClient() {
         isDurianBackyard={isDurianFarm(orchard.name)}
         title={orchard.name === 'สวนมังคุด' ? 'ทำดอกมังคุด' : 'ทำลูกทุเรียน'}
         Icon={Sprout}
+        hideSubMenu
       />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">

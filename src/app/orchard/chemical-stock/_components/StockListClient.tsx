@@ -629,6 +629,7 @@ export default function StockListClient({
         isDurianBackyard={isDurianFarm(orchard.name)}
         title={title}
         Icon={Icon}
+        hideSubMenu={true}
       />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-3">

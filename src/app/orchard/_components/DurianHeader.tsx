@@ -25,8 +25,6 @@ type Props = {
   hideTabs?: boolean;
   /** แสดงปุ่มลูกศรย้อนกลับไปหน้าก่อนหน้า แทนปุ่มบ้าน */
   showBack?: boolean;
-  /** ถ้ากำหนด จะแสดงปุ่มบ้านเพิ่ม (ข้างลูกศรย้อนกลับ) ที่กดแล้วไปยัง path นี้ */
-  homeHref?: string;
 };
 
 /**
@@ -46,7 +44,6 @@ export default function DurianHeader({
   centerLabel,
   hideTabs = false,
   showBack = false,
-  homeHref,
 }: Props) {
   const router = useRouter();
   const { isDark, toggleTheme, mounted } = useTheme();
@@ -109,22 +106,11 @@ export default function DurianHeader({
               </button>
             ) : (
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.push(hideTabs ? `/orchard/farm-map?id=${orchardId}` : '/')}
                 className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
-                title="หน้าแรก"
+                title={hideTabs ? 'หน้าผังสวน' : 'หน้าแรก'}
               >
                 <Home size={24} />
-              </button>
-            )}
-
-            {/* ปุ่มบ้านเสริม → กลับไปหน้าที่กำหนด (เช่น หน้าการดูแล) */}
-            {homeHref && (
-              <button
-                onClick={() => router.push(homeHref)}
-                className="w-11 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
-                title="หน้าการดูแล"
-              >
-                <Home size={22} />
               </button>
             )}
 

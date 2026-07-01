@@ -205,6 +205,7 @@ export default function ExpenseSummaryClient() {
         isDurianBackyard={isDurianBackyard}
         title="สรุปค่าใช้จ่าย"
         Icon={Wallet}
+        hideSubMenu={true}
       />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">

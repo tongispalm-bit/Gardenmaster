@@ -158,6 +158,7 @@ export default function ExpenseClient() {
         isDurianBackyard={isDurianFarm(orchard.name)}
         title="รายจ่ายทั่วไป"
         Icon={BarChart3}
+        hideSubMenu
       />
 
       <div className="px-4 py-4 max-w-lg mx-auto space-y-4">

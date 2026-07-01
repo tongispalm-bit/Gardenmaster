@@ -518,6 +518,7 @@ export default function HospitalClient() {
         isDurianBackyard={isDurianBackyard}
         title="ห้องพยาบาล"
         Icon={Stethoscope}
+        hideSubMenu={true}
       />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-3">

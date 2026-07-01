@@ -164,6 +164,8 @@ export default function HospitalHistoryClient() {
         orchardColor={orchard.color}
         orchardIcon={orchard.icon}
         activeTab="hospital-history"
+        centerLabel="ประวัติการป่วย"
+        hideTabs
       />
 
       <div className="px-3 sm:px-6 py-4 max-w-4xl mx-auto">

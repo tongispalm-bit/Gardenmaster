@@ -120,6 +120,7 @@ export default function UpgradeClient() {
         isDurianBackyard={isDurianFarm(orchard.name)}
         title="ค่าปรับปรุงสวน"
         Icon={Wrench}
+        hideSubMenu={true}
       />
 
       <div className="px-4 py-4 max-w-lg mx-auto space-y-4">

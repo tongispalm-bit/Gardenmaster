@@ -182,8 +182,8 @@ export default function SalesClient() {
         isDurianBackyard={isDurianBackyard}
         title="การซื้อขาย"
         Icon={ShoppingCart}
+        hideSubMenu={true}
       />
-      {isDurianBackyard && null}
 
       <div className="px-5 py-6 max-w-4xl mx-auto space-y-6">
         {/* ── ปุ่มเปิด popup บันทึกการขาย ── */}

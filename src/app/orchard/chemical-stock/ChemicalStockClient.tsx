@@ -171,6 +171,7 @@ export default function ChemicalStockClient() {
         isDurianBackyard={isDurianBackyard}
         title="คลังสารเคมี"
         Icon={FlaskConical}
+        hideSubMenu={true}
       />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-3">
