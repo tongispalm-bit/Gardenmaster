@@ -7,11 +7,14 @@ import type { ComponentType, ReactNode } from 'react';
 import { isMangosteenFarm } from '@/lib/firebase';
 import SubMenuTabs from './SubMenuTabs';
 import FixedHeaderShell from './FixedHeaderShell';
+import DurianHeader from './DurianHeader';
 
 type Props = {
   orchardName: string;
   orchardColor: string;
   orchardId: string;
+  /** ไอคอน (emoji) ของสวน — จำเป็นสำหรับ header แบบทุเรียน (มี tabs) */
+  orchardIcon?: string;
   isDurianBackyard: boolean;
   title: string;
   Icon: ComponentType<{ size?: number; className?: string }>;
@@ -21,7 +24,7 @@ type Props = {
   belowHeader?: ReactNode;
 };
 
-/** map pathname → activeTab id */
+/** map pathname → activeTab id (บริบทสวนมังคุด) */
 function pathToTabId(pathname: string | null): string {
   if (!pathname) return '';
   if (pathname.startsWith('/orchard/care/water')) return 'water';
@@ -39,10 +42,26 @@ function pathToTabId(pathname: string | null): string {
   return '';
 }
 
+/** map pathname → activeTab id (บริบทสวนทุเรียน — มี tab "การดูแล" = care) */
+function pathToDurianTabId(pathname: string | null): string {
+  if (!pathname) return '';
+  if (pathname.startsWith('/orchard/care')) return 'care';
+  if (pathname.startsWith('/orchard/expense-summary')) return 'expense-summary';
+  if (pathname.startsWith('/orchard/expense')) return 'expense';
+  if (pathname.startsWith('/orchard/upgrade')) return 'upgrade';
+  if (pathname.startsWith('/orchard/sales')) return 'sales';
+  if (pathname.startsWith('/orchard/hospital-history')) return 'hospital-history';
+  if (pathname.startsWith('/orchard/hospital')) return 'hospital';
+  if (pathname.startsWith('/orchard/chemical-stock')) return 'chemical-stock';
+  if (pathname.startsWith('/orchard/farm-map')) return 'farm-map';
+  return '';
+}
+
 export default function SubPageHeader({
   orchardName,
   orchardColor,
   orchardId,
+  orchardIcon,
   isDurianBackyard,
   title,
   Icon,
@@ -58,6 +77,21 @@ export default function SubPageHeader({
   // ตัด trailing slash + เทียบทั้ง 2 รูปแบบเพื่อทนกับ trailingSlash config
   const cleanPath = (pathname || '').replace(/\/+$/, '');
   const isMangoOverview = isMango && cleanPath === '/orchard/care';
+
+  // ── สวนทุเรียน (มีผังสวน + ไม่ใช่มังคุด): ใช้ DurianHeader แบบเดียวกับหน้าผังสวน ──
+  // ทุกเมนูย่อยจึงได้ header เหมือนกัน: fixed + tabs + ชื่อเมนูตรงกลาง + pill รอบปี
+  if (isDurianBackyard && !isMango) {
+    return (
+      <DurianHeader
+        orchardId={orchardId}
+        orchardName={orchardName}
+        orchardColor={orchardColor}
+        orchardIcon={orchardIcon ?? '🌳'}
+        activeTab={pathToDurianTabId(cleanPath)}
+        centerLabel={title}
+      />
+    );
+  }
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {

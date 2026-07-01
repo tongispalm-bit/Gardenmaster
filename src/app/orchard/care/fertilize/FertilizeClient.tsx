@@ -179,7 +179,7 @@ export default function FertilizeClient() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-8 overflow-x-clip">
-      <SubPageHeader orchardName={orchard.name} orchardColor={orchard.color} orchardId={orchardId} isDurianBackyard={isDurianFarm(orchard.name)} title="ใส่ปุ๋ย" Icon={Leaf} />
+      <SubPageHeader orchardName={orchard.name} orchardColor={orchard.color} orchardIcon={orchard.icon} orchardId={orchardId} isDurianBackyard={isDurianFarm(orchard.name)} title="ใส่ปุ๋ย" Icon={Leaf} />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">
 

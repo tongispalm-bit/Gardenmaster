@@ -624,6 +624,7 @@ export default function StockListClient({
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
         orchardId={orchardId}
         isDurianBackyard={isDurianFarm(orchard.name)}
         title={title}

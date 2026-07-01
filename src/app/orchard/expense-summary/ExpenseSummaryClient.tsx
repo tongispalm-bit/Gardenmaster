@@ -200,6 +200,7 @@ export default function ExpenseSummaryClient() {
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
         orchardId={orchardId}
         isDurianBackyard={isDurianBackyard}
         title="สรุปค่าใช้จ่าย"

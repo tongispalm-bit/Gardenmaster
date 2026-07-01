@@ -179,6 +179,7 @@ export default function DurianFruitClient() {
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
         orchardId={orchardId}
         isDurianBackyard={isDurianFarm(orchard.name)}
         title={orchard.name === 'สวนมังคุด' ? 'ทำดอกมังคุด' : 'ทำลูกทุเรียน'}

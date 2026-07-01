@@ -265,6 +265,7 @@ export default function WaterClient() {
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
         orchardId={orchardId}
         isDurianBackyard={isDurianBackyard}
         title="รดน้ำ"

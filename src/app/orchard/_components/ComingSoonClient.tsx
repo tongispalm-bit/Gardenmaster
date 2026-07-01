@@ -58,6 +58,7 @@ export default function ComingSoonClient({ tabId, title, Icon, accentClass }: Pr
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
         orchardId={orchardId}
         isDurianBackyard={isDurianBackyard}
         title={title}

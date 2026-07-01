@@ -115,6 +115,7 @@ export default function UpgradeClient() {
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
         orchardId={orchardId}
         isDurianBackyard={isDurianFarm(orchard.name)}
         title="ค่าปรับปรุงสวน"

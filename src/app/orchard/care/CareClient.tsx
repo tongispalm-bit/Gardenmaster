@@ -368,6 +368,7 @@ export default function CareClient() {
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
         orchardId={orchardId}
         isDurianBackyard={isDurianBackyard}
         title={isMango ? 'สวนมังคุด' : 'การดูแล'}

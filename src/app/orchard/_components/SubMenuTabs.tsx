@@ -59,6 +59,19 @@ type Props = {
   orchardName?: string;
 };
 
+type Props = {
+  activeTab: string;
+  orchardId: string;
+  /** ชื่อสวน — ใช้กรองแท็บที่ไม่เกี่ยวข้อง (เช่น สวนมังคุดไม่มีผังสวน/พยาบาล) */
+  orchardName?: string;
+};
+
+/** map tab id → label สำหรับใช้แสดงชื่อเมนูย่อยที่กำลังเปิดอยู่ (เช่นตรงกลาง header) */
+export const TAB_LABELS: Record<string, string> = TABS.reduce(
+  (acc, t) => { acc[t.id] = t.label; return acc; },
+  {} as Record<string, string>,
+);
+
 export default function SubMenuTabs({ activeTab, orchardId, orchardName }: Props) {
   const router = useRouter();
   const isMango = isMangosteenFarm(orchardName);

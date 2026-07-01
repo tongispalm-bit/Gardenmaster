@@ -513,6 +513,7 @@ export default function HospitalClient() {
       <SubPageHeader
         orchardName={orchard.name}
         orchardColor={orchard.color}
+        orchardIcon={orchard.icon}
         orchardId={orchardId}
         isDurianBackyard={isDurianBackyard}
         title="ห้องพยาบาล"

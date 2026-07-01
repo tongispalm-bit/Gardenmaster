@@ -7,18 +7,20 @@ import { useTheme } from '@/lib/useTheme';
 import { useAuth } from '@/lib/useAuth';
 import { useHarvestYear, HARVEST_YEAR_OPTIONS } from '@/lib/useHarvestYear';
 import ProfileModal from '@/app/_components/ProfileModal';
-import SubMenuTabs from './SubMenuTabs';
+import SubMenuTabs, { TAB_LABELS } from './SubMenuTabs';
 import FixedHeaderShell from './FixedHeaderShell';
 
 type Props = {
   orchardId: string;
   orchardName: string;
   orchardColor: string;
-  orchardIcon: string;
+  orchardIcon?: string;
   /** id ของแท็บที่ active ใน SubMenuTabs */
   activeTab: string;
   /** แสดง pill รอบปีเก็บเกี่ยว (default: true) */
   showYear?: boolean;
+  /** override ชื่อเมนูย่อยที่แสดงตรงกลาง (ถ้าไม่ส่ง จะดึงจาก activeTab) */
+  centerLabel?: string;
 };
 
 /**
@@ -35,6 +37,7 @@ export default function DurianHeader({
   orchardIcon,
   activeTab,
   showYear = true,
+  centerLabel,
 }: Props) {
   const router = useRouter();
   const { isDark, toggleTheme, mounted } = useTheme();
@@ -45,6 +48,10 @@ export default function DurianHeader({
   const [yearOpen, setYearOpen] = useState(false);
   const [online, setOnline] = useState(true);
   const yearRef = useRef<HTMLDivElement>(null);
+
+  // ชื่อเมนูย่อยที่กำลังเปิดอยู่ (เช่น "ผังสวน") สำหรับแสดงตรงกลาง header
+  const activeLabel =
+    centerLabel ?? TAB_LABELS[activeTab] ?? (activeTab === 'tree-info' ? 'ข้อมูลต้น' : undefined);
 
   // สถานะออนไลน์/ออฟไลน์
   useEffect(() => {
@@ -76,20 +83,28 @@ export default function DurianHeader({
         <header className="text-white px-2.5 pb-2" style={{ backgroundColor: orchardColor }}>
           {/* แถวบน: บ้าน · ชื่อสวน+sync · โปรไฟล์ · ธีม */}
           <div className="flex items-center gap-1 h-[60px]">
-            {/* ซ้าย: ปุ่มบ้าน → หน้าผังสวน (หน้าแรกของสวนทุเรียนหลังบ้าน) */}
+            {/* ซ้าย: ปุ่มบ้าน → หน้าแรก Garden Master */}
             <button
-              onClick={() => router.push(`/orchard/farm-map?id=${orchardId}`)}
+              onClick={() => router.push('/')}
               className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
-              title="หน้าผังสวน"
+              title="หน้าแรก"
             >
               <Home size={24} />
             </button>
 
-            {/* กลาง: ชื่อสวน + สถานะ sync */}
+            {/* กลาง: ชื่อสวน + เมนูย่อยที่เปิดอยู่ + สถานะ sync */}
             <div className="flex-1 min-w-0 px-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-xl leading-none flex-shrink-0">{orchardIcon}</span>
-                <span className="font-bold text-lg leading-tight">{orchardName}</span>
+                <span className="font-bold text-lg leading-tight truncate">{orchardName}</span>
+                {activeLabel && (
+                  <>
+                    <span className="text-white/50 flex-shrink-0">›</span>
+                    <span className="font-bold text-lg leading-tight text-white/95 truncate">
+                      {activeLabel}
+                    </span>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-1 ml-0.5 mt-0.5">
                 <span
