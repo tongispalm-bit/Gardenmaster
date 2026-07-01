@@ -479,6 +479,7 @@ export default function CareClient() {
         isDurianBackyard={isDurianBackyard}
         title={isMango ? 'สวนมังคุด' : 'การดูแล'}
         Icon={LeafIcon}
+        hideSubMenu={!isMango}
       />
 
       <div className="px-4 py-4 max-w-2xl mx-auto space-y-4">

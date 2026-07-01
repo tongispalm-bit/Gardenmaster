@@ -270,6 +270,7 @@ export default function WaterClient() {
         isDurianBackyard={isDurianBackyard}
         title="รดน้ำ"
         Icon={Droplets}
+        hideSubMenu
       />
 
       <div className="px-4 py-4 max-w-lg mx-auto space-y-4">

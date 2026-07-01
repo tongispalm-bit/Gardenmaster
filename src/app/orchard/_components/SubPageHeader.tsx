@@ -22,6 +22,8 @@ type Props = {
   headerRight?: ReactNode;
   /** แถบที่แสดงต่อจาก header (เช่น แถบเลือกปี) */
   belowHeader?: ReactNode;
+  /** ซ่อนแถบเมนูย่อย (tabs) — ใช้กับหน้าที่ต้องการแสดงข้อมูลแบบเต็ม เช่น หน้าการดูแลทุเรียน */
+  hideSubMenu?: boolean;
 };
 
 /** map pathname → activeTab id (บริบทสวนมังคุด) */
@@ -67,6 +69,7 @@ export default function SubPageHeader({
   Icon,
   headerRight,
   belowHeader,
+  hideSubMenu,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -80,7 +83,10 @@ export default function SubPageHeader({
 
   // ── สวนทุเรียน (มีผังสวน + ไม่ใช่มังคุด): ใช้ DurianHeader แบบเดียวกับหน้าผังสวน ──
   // ทุกเมนูย่อยจึงได้ header เหมือนกัน: fixed + tabs + ชื่อเมนูตรงกลาง + pill รอบปี
+  // ถ้า hideSubMenu → ซ่อน tabs + แสดงปุ่มลูกศรย้อนกลับ (แต่คงข้อมูล header แบบผังสวนไว้)
   if (isDurianBackyard && !isMango) {
+    // หน้าย่อยของการดูแล (รดน้ำ/ใส่ปุ๋ย/พ่นยา/ทำลูกทุเรียน) → ปุ่มบ้านกลับไปหน้าการดูแล
+    const isCareSubPage = /^\/orchard\/care\/(water|fertilize|spray|durian-fruit)/.test(cleanPath);
     return (
       <DurianHeader
         orchardId={orchardId}
@@ -89,6 +95,9 @@ export default function SubPageHeader({
         orchardIcon={orchardIcon ?? '🌳'}
         activeTab={pathToDurianTabId(cleanPath)}
         centerLabel={title}
+        hideTabs={hideSubMenu}
+        showBack={hideSubMenu}
+        homeHref={isCareSubPage ? `/orchard/care?id=${orchardId}` : undefined}
       />
     );
   }

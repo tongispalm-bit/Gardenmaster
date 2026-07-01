@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Home, Moon, Sun, Calendar, Check, ChevronDown } from 'lucide-react';
+import { Home, Moon, Sun, Calendar, Check, ChevronDown, ArrowLeft } from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
 import { useAuth } from '@/lib/useAuth';
 import { useHarvestYear, HARVEST_YEAR_OPTIONS } from '@/lib/useHarvestYear';
@@ -21,6 +21,12 @@ type Props = {
   showYear?: boolean;
   /** override ชื่อเมนูย่อยที่แสดงตรงกลาง (ถ้าไม่ส่ง จะดึงจาก activeTab) */
   centerLabel?: string;
+  /** ซ่อนแถบเมนูย่อย (SubMenuTabs) — ใช้กับหน้าที่ต้องการแสดงข้อมูลแบบเต็ม */
+  hideTabs?: boolean;
+  /** แสดงปุ่มลูกศรย้อนกลับไปหน้าก่อนหน้า แทนปุ่มบ้าน */
+  showBack?: boolean;
+  /** ถ้ากำหนด จะแสดงปุ่มบ้านเพิ่ม (ข้างลูกศรย้อนกลับ) ที่กดแล้วไปยัง path นี้ */
+  homeHref?: string;
 };
 
 /**
@@ -38,6 +44,9 @@ export default function DurianHeader({
   activeTab,
   showYear = true,
   centerLabel,
+  hideTabs = false,
+  showBack = false,
+  homeHref,
 }: Props) {
   const router = useRouter();
   const { isDark, toggleTheme, mounted } = useTheme();
@@ -83,14 +92,41 @@ export default function DurianHeader({
         <header className="text-white px-2.5 pb-2" style={{ backgroundColor: orchardColor }}>
           {/* แถวบน: บ้าน · ชื่อสวน+sync · โปรไฟล์ · ธีม */}
           <div className="flex items-center gap-1 h-[60px]">
-            {/* ซ้าย: ปุ่มบ้าน → หน้าแรก Garden Master */}
-            <button
-              onClick={() => router.push('/')}
-              className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
-              title="หน้าแรก"
-            >
-              <Home size={24} />
-            </button>
+            {/* ซ้าย: ปุ่มย้อนกลับ (showBack) หรือ ปุ่มบ้าน → หน้าแรก */}
+            {showBack ? (
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push(`/orchard/farm-map?id=${orchardId}`);
+                  }
+                }}
+                className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
+                title="ย้อนกลับ"
+              >
+                <ArrowLeft size={24} />
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push('/')}
+                className="w-12 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
+                title="หน้าแรก"
+              >
+                <Home size={24} />
+              </button>
+            )}
+
+            {/* ปุ่มบ้านเสริม → กลับไปหน้าที่กำหนด (เช่น หน้าการดูแล) */}
+            {homeHref && (
+              <button
+                onClick={() => router.push(homeHref)}
+                className="w-11 h-12 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors flex-shrink-0"
+                title="หน้าการดูแล"
+              >
+                <Home size={22} />
+              </button>
+            )}
 
             {/* กลาง: ชื่อสวน + เมนูย่อยที่เปิดอยู่ + สถานะ sync */}
             <div className="flex-1 min-w-0 px-1">
@@ -190,7 +226,9 @@ export default function DurianHeader({
           )}
         </header>
 
-        <SubMenuTabs activeTab={activeTab} orchardId={orchardId} orchardName={orchardName} />
+        {!hideTabs && (
+          <SubMenuTabs activeTab={activeTab} orchardId={orchardId} orchardName={orchardName} />
+        )}
       </FixedHeaderShell>
 
       {user && (
