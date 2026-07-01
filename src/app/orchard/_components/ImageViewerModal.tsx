@@ -68,8 +68,8 @@ export default function ImageViewerModal({ images, initialIndex, onClose }: Imag
     >
       {/* แถบบน — เว้น safe-area ไม่ให้ปุ่ม X ล้นไปชน status bar/header */}
       <div
-        className="relative flex items-center justify-between px-3 pb-2 flex-shrink-0"
-        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+        className="relative flex items-center justify-between px-4 pb-3 flex-shrink-0"
+        style={{ paddingTop: 'max(env(safe-area-inset-top, 16px), 16px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <span className="px-3 py-1.5 rounded-full bg-black/50 text-white text-xs font-bold">
@@ -77,10 +77,10 @@ export default function ImageViewerModal({ images, initialIndex, onClose }: Imag
         </span>
         <button
           onClick={onClose}
-          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+          className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 active:bg-white/40 text-white flex items-center justify-center transition-colors shadow-lg"
           aria-label="ปิด"
         >
-          <X size={22} />
+          <X size={26} strokeWidth={2.5} />
         </button>
       </div>
 
@@ -95,10 +95,10 @@ export default function ImageViewerModal({ images, initialIndex, onClose }: Imag
         {images.length > 1 && (
           <button
             onClick={(e) => { e.stopPropagation(); goPrev(); }}
-            className="absolute left-2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            className="absolute left-3 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/20 hover:bg-white/30 active:bg-white/40 text-white flex items-center justify-center transition-colors shadow-lg"
             aria-label="รูปก่อนหน้า"
           >
-            <ChevronLeft size={26} />
+            <ChevronLeft size={28} strokeWidth={2.5} />
           </button>
         )}
 
@@ -111,10 +111,10 @@ export default function ImageViewerModal({ images, initialIndex, onClose }: Imag
         {images.length > 1 && (
           <button
             onClick={(e) => { e.stopPropagation(); goNext(); }}
-            className="absolute right-2 z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            className="absolute right-3 z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-white/20 hover:bg-white/30 active:bg-white/40 text-white flex items-center justify-center transition-colors shadow-lg"
             aria-label="รูปถัดไป"
           >
-            <ChevronRight size={26} />
+            <ChevronRight size={28} strokeWidth={2.5} />
           </button>
         )}
       </div>
