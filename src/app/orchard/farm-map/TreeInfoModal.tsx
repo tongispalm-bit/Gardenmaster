@@ -14,7 +14,7 @@ import {
   deleteTreeProfile,
 } from '@/lib/firebase';
 import { X, Trash2 } from 'lucide-react';
-import ImageLightbox from './ImageLightbox';
+import ImageViewerModal from '../_components/ImageViewerModal';
 
 const SEVERITY_BG: Record<Severity, { bg: string; bgDark: string; label: string }> = {
   mild:     { bg: 'bg-yellow-200', bgDark: 'dark:bg-yellow-800/60', label: 'เล็กน้อย' },
@@ -511,7 +511,7 @@ export default function TreeInfoModal({
       
       {/* Image Lightbox */}
       {showLightbox && (
-        <ImageLightbox
+        <ImageViewerModal
           images={lightboxImages}
           initialIndex={lightboxIndex}
           onClose={() => setShowLightbox(false)}

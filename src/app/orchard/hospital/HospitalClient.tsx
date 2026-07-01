@@ -21,7 +21,7 @@ import {
 } from '@/lib/firebase';
 import { Stethoscope, Plus, Trash2, X, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 import SubPageHeader from '../_components/SubPageHeader';
-import ImageLightbox from '../farm-map/ImageLightbox';
+import ImageViewerModal from '../_components/ImageViewerModal';
 
 const SEVERITY_LABEL: Record<Severity, string> = {
   mild: 'เล็กน้อย',
@@ -974,7 +974,7 @@ export default function HospitalClient() {
 
       {/* Image Lightbox */}
       {showLightbox && (
-        <ImageLightbox
+        <ImageViewerModal
           images={lightboxImages}
           initialIndex={lightboxIndex}
           onClose={() => setShowLightbox(false)}
