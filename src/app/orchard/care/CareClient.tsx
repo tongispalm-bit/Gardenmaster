@@ -362,6 +362,112 @@ export default function CareClient() {
   const todayWeather = weather?.daily?.[0];
   const todayWmo = todayWeather ? weatherIcon(todayWeather.code) : null;
 
+  // ── การ์ดสภาพอากาศ + แจ้งเตือน (แยกไว้เพื่อจัดลำดับการแสดงผล) ──
+  const weatherSection = (
+    <>
+      {/* ── การ์ดสภาพอากาศ ── */}
+      <div className="bg-gradient-to-br from-sky-400 to-blue-500 dark:from-sky-600 dark:to-blue-700 rounded-xl p-3 text-white shadow-md">
+        {weatherLoading ? (
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white/60" />
+            <span className="text-xs">กำลังโหลดสภาพอากาศ...</span>
+          </div>
+        ) : !weather ? (
+          <div className="flex items-center gap-2">
+            <Cloud size={16} />
+            <span className="text-xs">ไม่สามารถโหลดสภาพอากาศได้</span>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {todayWmo && (
+                  <todayWmo.Icon size={32} className="text-white drop-shadow" />
+                )}
+                <div>
+                  <p className="text-2xl font-extrabold leading-none">
+                    {weather.current?.temp.toFixed(0) ?? todayWeather?.tMax.toFixed(0) ?? '—'}°
+                    <span className="text-[11px] font-bold opacity-80 ml-0.5">C</span>
+                  </p>
+                  <p className="text-[10px] opacity-90 mt-0.5">{todayWmo?.label}</p>
+                </div>
+              </div>
+              <div className="text-right text-[10px] leading-tight space-y-0.5">
+                {todayWeather && (
+                  <>
+                    <p>สูง {todayWeather.tMax.toFixed(0)}° · ต่ำ {todayWeather.tMin.toFixed(0)}°</p>
+                    <p className="flex items-center justify-end gap-1">
+                      <CloudRain size={10} />
+                      ฝน {todayWeather.rainProb}%
+                    </p>
+                    {todayWeather.rainSum > 0 && (
+                      <p className="opacity-80">{todayWeather.rainSum.toFixed(1)} มม.</p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* พยากรณ์ 4 วันถัดไป */}
+            {weather.daily.length > 1 && (
+              <div className="grid grid-cols-4 gap-1 mt-2 pt-2 border-t border-white/20">
+                {weather.daily.slice(1, 5).map((d) => {
+                  const wmo = weatherIcon(d.code);
+                  const dayName = (() => {
+                    const dt = new Date(d.date);
+                    const wd = ['อา','จ','อ','พ','พฤ','ศ','ส'][dt.getDay()];
+                    return wd;
+                  })();
+                  return (
+                    <div key={d.date} className="text-center bg-white/10 rounded-md py-1 px-0.5">
+                      <p className="text-[9px] opacity-90 leading-tight">{dayName}</p>
+                      <wmo.Icon size={16} className="mx-auto my-0.5 text-white" />
+                      <p className="text-[9px] font-bold leading-tight">{d.tMax.toFixed(0)}°</p>
+                      <p className="text-[8px] opacity-80 leading-tight">ฝน {d.rainProb}%</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-[9px] opacity-70 mt-1.5 flex items-center gap-1">
+              <MapPin size={9} />
+              {weather.source === 'gps' ? 'ตำแหน่งของคุณ' : 'จันทบุรี (พิกัดเริ่มต้น)'}
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* ── แจ้งเตือน ── */}
+      {weatherAlert && (
+        <div className={`rounded-2xl p-3 border flex gap-3 ${
+          weatherAlert.level === 'warning'
+            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
+            : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+        }`}>
+          <AlertTriangle
+            size={20}
+            className={`flex-shrink-0 mt-0.5 ${
+              weatherAlert.level === 'warning' ? 'text-amber-600' : 'text-blue-600'
+            }`}
+          />
+          <div className="flex-1">
+            <p className={`text-sm font-bold ${
+              weatherAlert.level === 'warning'
+                ? 'text-amber-700 dark:text-amber-300'
+                : 'text-blue-700 dark:text-blue-300'
+            }`}>
+              {weatherAlert.title}
+            </p>
+            <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5">
+              {weatherAlert.message}
+            </p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8 overflow-x-clip">
       {/* สวนมังคุด: ใช้ SubPageHeader ที่จะ render SubMenuTabs ต่อท้ายเองสำหรับสวนมังคุด */}
@@ -436,106 +542,8 @@ export default function CareClient() {
           </div>
         )}
 
-        {/* ── การ์ดสภาพอากาศ ── */}
-        <div className="bg-gradient-to-br from-sky-400 to-blue-500 dark:from-sky-600 dark:to-blue-700 rounded-xl p-3 text-white shadow-md">
-          {weatherLoading ? (
-            <div className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white/60" />
-              <span className="text-xs">กำลังโหลดสภาพอากาศ...</span>
-            </div>
-          ) : !weather ? (
-            <div className="flex items-center gap-2">
-              <Cloud size={16} />
-              <span className="text-xs">ไม่สามารถโหลดสภาพอากาศได้</span>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {todayWmo && (
-                    <todayWmo.Icon size={32} className="text-white drop-shadow" />
-                  )}
-                  <div>
-                    <p className="text-2xl font-extrabold leading-none">
-                      {weather.current?.temp.toFixed(0) ?? todayWeather?.tMax.toFixed(0) ?? '—'}°
-                      <span className="text-[11px] font-bold opacity-80 ml-0.5">C</span>
-                    </p>
-                    <p className="text-[10px] opacity-90 mt-0.5">{todayWmo?.label}</p>
-                  </div>
-                </div>
-                <div className="text-right text-[10px] leading-tight space-y-0.5">
-                  {todayWeather && (
-                    <>
-                      <p>สูง {todayWeather.tMax.toFixed(0)}° · ต่ำ {todayWeather.tMin.toFixed(0)}°</p>
-                      <p className="flex items-center justify-end gap-1">
-                        <CloudRain size={10} />
-                        ฝน {todayWeather.rainProb}%
-                      </p>
-                      {todayWeather.rainSum > 0 && (
-                        <p className="opacity-80">{todayWeather.rainSum.toFixed(1)} มม.</p>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* พยากรณ์ 4 วันถัดไป */}
-              {weather.daily.length > 1 && (
-                <div className="grid grid-cols-4 gap-1 mt-2 pt-2 border-t border-white/20">
-                  {weather.daily.slice(1, 5).map((d) => {
-                    const wmo = weatherIcon(d.code);
-                    const dayName = (() => {
-                      const dt = new Date(d.date);
-                      const wd = ['อา','จ','อ','พ','พฤ','ศ','ส'][dt.getDay()];
-                      return wd;
-                    })();
-                    return (
-                      <div key={d.date} className="text-center bg-white/10 rounded-md py-1 px-0.5">
-                        <p className="text-[9px] opacity-90 leading-tight">{dayName}</p>
-                        <wmo.Icon size={16} className="mx-auto my-0.5 text-white" />
-                        <p className="text-[9px] font-bold leading-tight">{d.tMax.toFixed(0)}°</p>
-                        <p className="text-[8px] opacity-80 leading-tight">ฝน {d.rainProb}%</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <p className="text-[9px] opacity-70 mt-1.5 flex items-center gap-1">
-                <MapPin size={9} />
-                {weather.source === 'gps' ? 'ตำแหน่งของคุณ' : 'จันทบุรี (พิกัดเริ่มต้น)'}
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* ── แจ้งเตือน ── */}
-        {weatherAlert && (
-          <div className={`rounded-2xl p-3 border flex gap-3 ${
-            weatherAlert.level === 'warning'
-              ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
-              : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
-          }`}>
-            <AlertTriangle
-              size={20}
-              className={`flex-shrink-0 mt-0.5 ${
-                weatherAlert.level === 'warning' ? 'text-amber-600' : 'text-blue-600'
-              }`}
-            />
-            <div className="flex-1">
-              <p className={`text-sm font-bold ${
-                weatherAlert.level === 'warning'
-                  ? 'text-amber-700 dark:text-amber-300'
-                  : 'text-blue-700 dark:text-blue-300'
-              }`}>
-                {weatherAlert.title}
-              </p>
-              <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5">
-                {weatherAlert.message}
-              </p>
-            </div>
-          </div>
-        )}
+        {/* ── สวนมังคุด: แสดงสภาพอากาศไว้บน (ตามเดิม) ── */}
+        {isMango && weatherSection}
 
         {/* ── เมนูประเภทการดูแล — ซ่อนในสวนมังคุด เพราะมีอยู่ใน tabs แล้ว ── */}
         {!isMango && (
@@ -667,6 +675,9 @@ export default function CareClient() {
             </div>
           </div>
         </div>
+
+        {/* ── สวนทุเรียน: แสดงสภาพอากาศ + แจ้งเตือนไว้ล่างสุด (ให้เห็นข้อมูลบันทึกก่อน) ── */}
+        {!isMango && weatherSection}
       </div>
 
       {/* ── Popup รายละเอียดของวันที่เลือก ── */}
