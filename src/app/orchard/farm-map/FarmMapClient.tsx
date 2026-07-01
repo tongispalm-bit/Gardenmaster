@@ -25,6 +25,7 @@ import {
 import { useTheme } from '@/lib/useTheme';
 import SubMenuTabs from '../_components/SubMenuTabs';
 import DurianHeader from '../_components/DurianHeader';
+import FixedHeaderShell from '../_components/FixedHeaderShell';
 import TreeInfoModal from './TreeInfoModal';
 
 // ── Constants ────────────────────────────────────────────────
@@ -458,7 +459,7 @@ export default function FarmMapClient() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-300 pb-8 overflow-x-clip">
       {isMango ? (
-        <div className="sticky top-0 z-40">
+        <FixedHeaderShell backgroundColor={orchard.color}>
           <header className="text-white px-2.5" style={{ backgroundColor: orchard.color }}>
             <div className="flex items-center justify-between h-16">
               <button onClick={() => router.push('/')} className="w-11 h-11 flex items-center justify-center hover:bg-white/20 rounded-full">
@@ -474,7 +475,7 @@ export default function FarmMapClient() {
             </div>
           </header>
           <SubMenuTabs activeTab="farm-map" orchardId={orchardId} orchardName={orchard.name} />
-        </div>
+        </FixedHeaderShell>
       ) : (
         <DurianHeader
           orchardId={orchardId}

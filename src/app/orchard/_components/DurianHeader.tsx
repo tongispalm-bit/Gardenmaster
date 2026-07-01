@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/useAuth';
 import { useHarvestYear, HARVEST_YEAR_OPTIONS } from '@/lib/useHarvestYear';
 import ProfileModal from '@/app/_components/ProfileModal';
 import SubMenuTabs from './SubMenuTabs';
+import FixedHeaderShell from './FixedHeaderShell';
 
 type Props = {
   orchardId: string;
@@ -71,7 +72,7 @@ export default function DurianHeader({
 
   return (
     <>
-      <div className="sticky top-0 z-40">
+      <FixedHeaderShell backgroundColor={orchardColor}>
         <header className="text-white px-2.5 pb-2" style={{ backgroundColor: orchardColor }}>
           {/* แถวบน: บ้าน · ชื่อสวน+sync · โปรไฟล์ · ธีม */}
           <div className="flex items-center gap-1 h-[60px]">
@@ -175,7 +176,7 @@ export default function DurianHeader({
         </header>
 
         <SubMenuTabs activeTab={activeTab} orchardId={orchardId} orchardName={orchardName} />
-      </div>
+      </FixedHeaderShell>
 
       {user && (
         <ProfileModal

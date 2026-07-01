@@ -6,6 +6,7 @@ import { ArrowLeft, Home, Moon, Sun } from 'lucide-react';
 import type { ComponentType, ReactNode } from 'react';
 import { isMangosteenFarm } from '@/lib/firebase';
 import SubMenuTabs from './SubMenuTabs';
+import FixedHeaderShell from './FixedHeaderShell';
 
 type Props = {
   orchardName: string;
@@ -74,7 +75,7 @@ export default function SubPageHeader({
 
   return (
     <>
-      <div className="sticky top-0 z-40">
+      <FixedHeaderShell backgroundColor={orchardColor}>
       <header
         className="text-white px-2.5"
         style={{ backgroundColor: orchardColor }}
@@ -133,7 +134,7 @@ export default function SubPageHeader({
           orchardName={orchardName}
         />
       )}
-      </div>
+      </FixedHeaderShell>
     </>
   );
 }
