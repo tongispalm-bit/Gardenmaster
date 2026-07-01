@@ -10,6 +10,7 @@ import {
   type MedicineCategory,
   type MedicineUnit,
 } from '@/lib/firebase';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import { Plus, Trash2, Pencil, X, Camera, Flame, Snowflake, ChevronLeft, ChevronRight, Calendar, type LucideIcon } from 'lucide-react';
 import SubPageHeader from '../../_components/SubPageHeader';
 import ImageViewerModal from '../../_components/ImageViewerModal';
@@ -163,10 +164,11 @@ export default function StockListClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
   const a = ACCENT_CLASSES[accent];
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [items, setItems] = useState<StockItem[]>([]);
+  const [allItems, setAllItems] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -188,6 +190,12 @@ export default function StockListClient({
   };
 
   const [form, setForm] = useState(EMPTY_FORM);
+
+  // Filter ตามปีที่เลือก
+  const items = useMemo(
+    () => allItems.filter(item => getRecordYear(item) === selectedYear),
+    [allItems, selectedYear]
+  );
 
   // อัปเดต default category เมื่อ categories เปลี่ยน (ตอน mount)
   useEffect(() => {
@@ -213,7 +221,7 @@ export default function StockListClient({
         api.list(orchardId),
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
-      setItems(data);
+      setAllItems(data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -493,6 +501,7 @@ export default function StockListClient({
         purchaseDate: form.purchaseDate,
         photos: form.photos,
         note: form.note.trim(),
+        year: selectedYear, // ⭐ เพิ่ม year
         updatedAt: now,
       };
       if (editingId) {

@@ -11,19 +11,24 @@ export async function addTreeProfile(record: Omit<TreeProfile, 'id'>) {
   return docRef.id;
 }
 
-export async function getTreeProfiles(orchardId?: string) {
+export async function getTreeProfiles(orchardId?: string, year?: number) {
   if (!orchardId) {
     const snapshot = await getDocs(collection(db, 'treeProfiles'));
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as TreeProfile[];
+    const trees = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as TreeProfile[];
+    // Filter ตามปีถ้ามีการระบุ
+    return year ? trees.filter(t => t.year === year) : trees;
   }
   
-  // ✅ Optimized: filter ฝั่ง server
+  // ✅ Optimized: filter orchardId ฝั่ง server
   const q = query(
     collection(db, 'treeProfiles'),
     where('orchardId', '==', orchardId)
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as TreeProfile[];
+  const trees = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as TreeProfile[];
+  
+  // Filter ตามปีถ้ามีการระบุ (client-side filter เนื่องจาก Firestore ไม่รองรับ compound query กับ optional field)
+  return year ? trees.filter(t => t.year === year) : trees;
 }
 
 export async function updateTreeProfile(id: string, data: Partial<Omit<TreeProfile, 'id'>>) {

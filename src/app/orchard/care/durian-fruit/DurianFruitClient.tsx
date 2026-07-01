@@ -50,10 +50,16 @@ export default function DurianFruitClient() {
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [trees, setTrees] = useState<TreeProfile[]>([]);
-  const [records, setRecords] = useState<DurianFruitRecord[]>([]);
+  const [allRecords, setAllRecords] = useState<DurianFruitRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [expandedTree, setExpandedTree] = useState<string | null>(null);
+
+  // Filter records ตามปีที่เลือก
+  const records = useMemo(
+    () => allRecords.filter(r => recordYear(r) === selectedYear),
+    [allRecords, selectedYear]
+  );
 
   // ── ผังสวน config (ตรงกับหน้า farm-map) ──
   const [mapRows, setMapRows] = useState(11);
@@ -86,7 +92,7 @@ export default function DurianFruitClient() {
       ]);
       setOrchard(orchards.find(o => o.id === orchardId) || null);
       setTrees(treeData);
-      setRecords(recordData);
+      setAllRecords(recordData);
       if (cfg) {
         setMapRows(cfg.rows);
         setMapCols(cfg.cols);
@@ -135,36 +141,30 @@ export default function DurianFruitClient() {
     finally { setSaving(false); }
   };
 
-  // ── กรองเฉพาะบันทึกของปีที่เลือก (รอบการเก็บเกี่ยว) ──
-  const yearRecords = useMemo(
-    () => records.filter(r => recordYear(r) === selectedYear),
-    [records, selectedYear]
-  );
-
-  // จัดกลุ่มตามต้น (เฉพาะปีที่เลือก)
+  // จัดกลุ่มตามต้น
   const byTree = useMemo(() => {
     const map: Record<string, DurianFruitRecord[]> = {};
-    for (const r of yearRecords) {
+    for (const r of records) {
       if (!map[r.treeNumber]) map[r.treeNumber] = [];
       map[r.treeNumber].push(r);
     }
     return map;
-  }, [yearRecords]);
+  }, [records]);
 
   // นับ active (ยังไม่แก่) — เฉพาะปีที่เลือก
   // ── สรุปยอดของปีที่เลือก ──
   const yearSummary = useMemo(() => {
-    const treeSet = new Set(yearRecords.map(r => r.treeNumber));
-    const harvested = yearRecords.filter(r => daysUntil(r.expectedHarvestDate) <= 0).length;
-    const batchSet = new Set(yearRecords.map(r => r.batch));
+    const treeSet = new Set(records.map(r => r.treeNumber));
+    const harvested = records.filter(r => daysUntil(r.expectedHarvestDate) <= 0).length;
+    const batchSet = new Set(records.map(r => r.batch));
     return {
-      total: yearRecords.length,
+      total: records.length,
       trees: treeSet.size,
-      active: yearRecords.length - harvested,
+      active: records.length - harvested,
       harvested,
       batches: batchSet.size,
     };
-  }, [yearRecords]);
+  }, [records]);
 
   if (!orchard || loading) {
     return (
@@ -234,7 +234,7 @@ export default function DurianFruitClient() {
           </div>
           <FarmMapGrid
             trees={trees}
-            fruitRecords={yearRecords}
+            fruitRecords={records}
             selectedTreeIds={selectedTreeIds}
             onToggleTree={handleToggleTree}
             rows={mapRows}
@@ -313,10 +313,10 @@ export default function DurianFruitClient() {
         {/* ── ประวัติแยกตามต้น ── */}
         <h2 className="font-bold text-sm text-slate-800 dark:text-white">
           📋 ประวัติการทำลูก ปี {selectedYear}
-          <span className="text-xs font-normal text-slate-500 dark:text-slate-400 ml-1">({yearRecords.length} รายการ)</span>
+          <span className="text-xs font-normal text-slate-500 dark:text-slate-400 ml-1">({records.length} รายการ)</span>
         </h2>
 
-        {yearRecords.length === 0 ? (
+        {records.length === 0 ? (
           <p className="text-center text-slate-500 dark:text-slate-400 text-sm py-6">ยังไม่มีบันทึกในปี {selectedYear}</p>
         ) : (
           Object.entries(byTree).map(([treeNum, treeRecords]) => (

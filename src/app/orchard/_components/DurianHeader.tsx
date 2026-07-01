@@ -19,6 +19,8 @@ type Props = {
   activeTab: string;
   /** แสดง pill รอบปีเก็บเกี่ยว (default: true) */
   showYear?: boolean;
+  /** ให้เลือกปีได้ด้วย dropdown (default: false) — ใช้เฉพาะหน้าผังสวน */
+  allowYearChange?: boolean;
   /** override ชื่อเมนูย่อยที่แสดงตรงกลาง (ถ้าไม่ส่ง จะดึงจาก activeTab) */
   centerLabel?: string;
   /** ซ่อนแถบเมนูย่อย (SubMenuTabs) — ใช้กับหน้าที่ต้องการแสดงข้อมูลแบบเต็ม */
@@ -41,6 +43,7 @@ export default function DurianHeader({
   orchardIcon,
   activeTab,
   showYear = true,
+  allowYearChange = false,
   centerLabel,
   hideTabs = false,
   showBack = false,
@@ -170,42 +173,53 @@ export default function DurianHeader({
             </button>
           </div>
 
-          {/* แถวล่าง: pill รอบปีเก็บเกี่ยว */}
+          {/* แถวล่าง: pill รอบปีเก็บเกี่ยว (แบบ dropdown หรือ read-only) */}
           {showYear && (
             <div className="relative" ref={yearRef}>
-              <button
-                onClick={() => setYearOpen((v) => !v)}
-                className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 active:bg-white/30 rounded-xl px-3 h-9 w-full transition-colors"
-                title="เปลี่ยนรอบปีเก็บเกี่ยว"
-              >
-                <Calendar size={15} className="flex-shrink-0" />
-                <span className="text-xs font-bold">รอบเก็บเกี่ยว ปี พ.ศ. {year}</span>
-                <ChevronDown size={14} className="ml-auto flex-shrink-0" />
-              </button>
-              {yearOpen && (
-                <div className="absolute left-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
-                  <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold border-b border-emerald-100 dark:border-emerald-800">
-                    เลือกรอบปีเก็บเกี่ยว
-                  </div>
-                  <div className="py-1">
-                    {HARVEST_YEAR_OPTIONS.map((y) => {
-                      const active = y === year;
-                      return (
-                        <button
-                          key={y}
-                          onClick={() => { setYear(y); setYearOpen(false); }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors ${
-                            active
-                              ? 'font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
-                              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                          }`}
-                        >
-                          ปี พ.ศ. {y}
-                          {active && <Check size={14} />}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {allowYearChange ? (
+                /* หน้าผังสวน: แสดง dropdown ให้เลือกปีได้ */
+                <>
+                  <button
+                    onClick={() => setYearOpen((v) => !v)}
+                    className="flex items-center gap-1.5 bg-white/15 hover:bg-white/25 active:bg-white/30 rounded-xl px-3 h-9 w-full transition-colors"
+                    title="เปลี่ยนรอบปีเก็บเกี่ยว"
+                  >
+                    <Calendar size={15} className="flex-shrink-0" />
+                    <span className="text-xs font-bold">รอบเก็บเกี่ยว ปี พ.ศ. {year}</span>
+                    <ChevronDown size={14} className="ml-auto flex-shrink-0" />
+                  </button>
+                  {yearOpen && (
+                    <div className="absolute left-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
+                      <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold border-b border-emerald-100 dark:border-emerald-800">
+                        เลือกรอบปีเก็บเกี่ยว
+                      </div>
+                      <div className="py-1">
+                        {HARVEST_YEAR_OPTIONS.map((y) => {
+                          const active = y === year;
+                          return (
+                            <button
+                              key={y}
+                              onClick={() => { setYear(y); setYearOpen(false); }}
+                              className={`w-full flex items-center justify-between px-3 py-2.5 text-sm text-left transition-colors ${
+                                active
+                                  ? 'font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20'
+                                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                              }`}
+                            >
+                              ปี พ.ศ. {y}
+                              {active && <Check size={14} />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* หน้าอื่นๆ: แสดงปีแบบ read-only ไม่มี dropdown */
+                <div className="flex items-center gap-1.5 bg-white/15 rounded-xl px-3 h-9 w-full">
+                  <Calendar size={15} className="flex-shrink-0" />
+                  <span className="text-xs font-bold">รอบเก็บเกี่ยว ปี พ.ศ. {year}</span>
                 </div>
               )}
             </div>

@@ -7,6 +7,7 @@ import {
   isDurianFarm,
   type Orchard, type MedicineItemRecord, type NutrientItemRecord,
 } from '@/lib/firebase';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import { FlaskConical, Bug, Sprout, Leaf, ChevronRight, Wallet } from 'lucide-react';
 import SubPageHeader from '../_components/SubPageHeader';
 
@@ -89,10 +90,11 @@ export default function ChemicalStockClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [medicineItems, setMedicineItems] = useState<MedicineItemRecord[]>([]);
-  const [nutrientItems, setNutrientItems] = useState<NutrientItemRecord[]>([]);
+  const [allMedicineItems, setAllMedicineItems] = useState<MedicineItemRecord[]>([]);
+  const [allNutrientItems, setAllNutrientItems] = useState<NutrientItemRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -111,14 +113,25 @@ export default function ChemicalStockClient() {
         getNutrientItems(orchardId),
       ]);
       setOrchard(orchards.find((o) => o.id === orchardId) || null);
-      setMedicineItems(meds);
-      setNutrientItems(nutrs);
+      setAllMedicineItems(meds);
+      setAllNutrientItems(nutrs);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
   };
+
+  // Filter ตามปีที่เลือก
+  const medicineItems = useMemo(
+    () => allMedicineItems.filter(item => getRecordYear(item) === selectedYear),
+    [allMedicineItems, selectedYear]
+  );
+
+  const nutrientItems = useMemo(
+    () => allNutrientItems.filter(item => getRecordYear(item) === selectedYear),
+    [allNutrientItems, selectedYear]
+  );
 
   // สรุปยอดรายจ่ายและจำนวนรายการของแต่ละกลุ่ม
   const summaryByGroup = useMemo(() => {

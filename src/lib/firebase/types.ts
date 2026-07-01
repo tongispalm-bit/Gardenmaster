@@ -93,6 +93,7 @@ export type TreeProfile = {
   status: 'normal' | 'watch' | 'seedling';
   zone?: 'A' | 'B' | null;
   note: string;
+  year?: number; // ปี พ.ศ. (เช่น 2569, 2570)
   createdAt: number;
   updatedAt: number;
 };
@@ -125,6 +126,7 @@ export type CareRecord = {
   type: 'water' | 'fertilize' | 'pesticide';
   plant: string;
   note: string;
+  year?: number; // ⭐ ปี พ.ศ. รอบเก็บเกี่ยว
   createdAt: number;
 };
 
@@ -296,6 +298,7 @@ export type Transaction = {
   amount: number;
   description: string;
   category: string;
+  year?: number; // ⭐ ปี พ.ศ. รอบเก็บเกี่ยว
   createdAt: number;
 };
 
@@ -469,6 +472,7 @@ export type MedicineItemRecord = {
   purchaseDate?: string;
   photos?: string[];
   note?: string;
+  year?: number; // ⭐ ปี พ.ศ. รอบเก็บเกี่ยว
   createdAt: number;
   updatedAt: number;
 };
@@ -497,6 +501,7 @@ export type NutrientItemRecord = {
   purchaseDate?: string;
   photos?: string[];
   note?: string;
+  year?: number; // ⭐ ปี พ.ศ. รอบเก็บเกี่ยว
   createdAt: number;
   updatedAt: number;
 };

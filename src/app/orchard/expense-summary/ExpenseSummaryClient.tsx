@@ -15,6 +15,7 @@ import {
   type MedicineItemRecord,
   type NutrientItemRecord,
 } from '@/lib/firebase';
+import { useHarvestYear, getRecordYear } from '@/lib/useHarvestYear';
 import {
   Wallet, Bug, Sprout, Leaf, FlaskConical, BarChart3, Wrench, ShoppingCart,
   TrendingUp, TrendingDown, ChevronRight,
@@ -40,13 +41,35 @@ export default function ExpenseSummaryClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId);
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [upgrades, setUpgrades] = useState<UpgradeExpense[]>([]);
-  const [medicines, setMedicines] = useState<MedicineItemRecord[]>([]);
-  const [nutrients, setNutrients] = useState<NutrientItemRecord[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [allUpgrades, setAllUpgrades] = useState<UpgradeExpense[]>([]);
+  const [allMedicines, setAllMedicines] = useState<MedicineItemRecord[]>([]);
+  const [allNutrients, setAllNutrients] = useState<NutrientItemRecord[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter ตามปีที่เลือก
+  const transactions = useMemo(
+    () => allTransactions.filter(t => getRecordYear(t) === selectedYear),
+    [allTransactions, selectedYear]
+  );
+
+  const upgrades = useMemo(
+    () => allUpgrades.filter(u => getRecordYear(u) === selectedYear),
+    [allUpgrades, selectedYear]
+  );
+
+  const medicines = useMemo(
+    () => allMedicines.filter(m => getRecordYear(m) === selectedYear),
+    [allMedicines, selectedYear]
+  );
+
+  const nutrients = useMemo(
+    () => allNutrients.filter(n => getRecordYear(n) === selectedYear),
+    [allNutrients, selectedYear]
+  );
 
   useEffect(() => {
     if (!orchardId) {
@@ -66,10 +89,10 @@ export default function ExpenseSummaryClient() {
         getNutrientItems(orchardId),
       ]);
       setOrchard(orchards.find((o) => o.id === orchardId) || null);
-      setTransactions(tx as Transaction[]);
-      setUpgrades(upg);
-      setMedicines(meds);
-      setNutrients(nutrs);
+      setAllTransactions(tx as Transaction[]);
+      setAllUpgrades(upg);
+      setAllMedicines(meds);
+      setAllNutrients(nutrs);
     } catch (e) {
       console.error(e);
     } finally {

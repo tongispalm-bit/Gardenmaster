@@ -23,6 +23,7 @@ import {
   Edit3, MapPin, Plus, Minus, Eye, Trash2,
 } from 'lucide-react';
 import { useTheme } from '@/lib/useTheme';
+import { useHarvestYear } from '@/lib/useHarvestYear';
 import SubMenuTabs from '../_components/SubMenuTabs';
 import DurianHeader from '../_components/DurianHeader';
 import FixedHeaderShell from '../_components/FixedHeaderShell';
@@ -72,9 +73,11 @@ export default function FarmMapClient() {
   const searchParams = useSearchParams();
   const { isDark, toggleTheme } = useTheme();
   const orchardId = searchParams.get('id') || '';
+  const { year: selectedYear } = useHarvestYear(orchardId); // ใช้ปีจาก DurianHeader
 
   const [orchard, setOrchard] = useState<Orchard | null>(null);
   const [trees, setTrees] = useState<TreeProfile[]>([]);
+  const [allTrees, setAllTrees] = useState<TreeProfile[]>([]); // เก็บข้อมูลทั้งหมดก่อน filter
   const [hospitalRecords, setHospitalRecords] = useState<HospitalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -106,17 +109,36 @@ export default function FarmMapClient() {
     }
   }, [orchard, orchardId, router]);
 
+  // Filter ข้อมูลตามปีที่เลือก
+  useEffect(() => {
+    if (!selectedYear) {
+      setTrees([]);
+      return;
+    }
+
+    // Filter ต้นที่มีปีตรงกับที่เลือก หรือไม่มีปี (ข้อมูลเก่า → ใช้ปีแรกของ HARVEST_YEAR_OPTIONS)
+    const filteredTrees = allTrees.filter(t => {
+      if (t.year) {
+        return t.year === selectedYear;
+      }
+      // ข้อมูลเก่าไม่มี year → แสดงในปี 2569 (ปีแรก)
+      return selectedYear === 2569;
+    });
+    setTrees(filteredTrees);
+  }, [selectedYear, allTrees]);
+
   const loadData = async () => {
     try {
       const [orchard, treeData, hospData, cfg] = await Promise.all([
         getOrchard(orchardId), // ✅ ดึงเฉพาะสวนเดียว แทนทั้งหมด
-        getTreeProfiles(orchardId),
+        getTreeProfiles(orchardId), // ดึงทั้งหมดก่อน จะ filter ตามปีภายหลัง
         getHospitalRecords(orchardId),
         getFarmMapConfig(orchardId),
       ]);
 
       setOrchard(orchard);
       setHospitalRecords(hospData);
+      setAllTrees(treeData); // เก็บข้อมูลทั้งหมด
 
       if (cfg) {
         setRows(cfg.rows);
@@ -144,12 +166,11 @@ export default function FarmMapClient() {
       }
       if (desync.length > 0) {
         await Promise.all(desync.map(d => updateTreeProfile(d.id, { status: d.to, updatedAt: Date.now() })));
-        setTrees(treeData.map(t => {
+        const updatedTrees = treeData.map(t => {
           const fix = desync.find(d => d.id === t.id);
           return fix ? { ...t, status: fix.to } : t;
-        }));
-      } else {
-        setTrees(treeData);
+        });
+        setAllTrees(updatedTrees);
       }
     } catch (error) {
       console.error('Error loading farm map:', error);
@@ -331,6 +352,7 @@ export default function FarmMapClient() {
           age: 0,
           zone: zoneBrush,
           note: '',
+          year: selectedYear, // ใช้ปีจาก header
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
@@ -393,6 +415,7 @@ export default function FarmMapClient() {
           age: Number(formData.age) || 0,
           zone: formData.zone ?? null,
           note: formData.note,
+          year: selectedYear, // ใช้ปีจาก header
           updatedAt: Date.now(),
         });
       } else {
@@ -407,6 +430,7 @@ export default function FarmMapClient() {
           age: Number(formData.age) || 0,
           zone: formData.zone ?? null,
           note: formData.note,
+          year: selectedYear, // ใช้ปีจาก header
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
@@ -483,6 +507,7 @@ export default function FarmMapClient() {
           orchardColor={orchard.color}
           orchardIcon={orchard.icon}
           activeTab="farm-map"
+          allowYearChange={true}
         />
       )}
 
@@ -786,6 +811,7 @@ export default function FarmMapClient() {
                 age: Number(formData.age) || 0,
                 zone: formData.zone ?? null,
                 note: formData.note,
+                year: selectedYear, // ใช้ปีจาก header
                 updatedAt: Date.now(),
               });
             } else {
@@ -799,6 +825,7 @@ export default function FarmMapClient() {
                 age: Number(formData.age) || 0,
                 zone: formData.zone ?? null,
                 note: formData.note,
+                year: selectedYear, // ใช้ปีจาก header
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
               });

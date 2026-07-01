@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   type TreeProfile,
@@ -69,6 +69,29 @@ export default function TreeInfoModal({
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
+
+  // ⭐ Sync form เมื่อ existingTree เปลี่ยน (หลังบันทึกแล้ว reload)
+  useEffect(() => {
+    if (existingTree) {
+      setForm({
+        treeNumber: existingTree.treeNumber,
+        status: existingTree.status,
+        variety: existingTree.variety,
+        age: existingTree.age,
+        zone: existingTree.zone ?? null,
+        note: existingTree.note,
+      });
+    } else if (editing) {
+      setForm({
+        treeNumber: defaultTreeNumber(orchardName, editing.row, editing.col),
+        status: 'normal',
+        variety: getVarietiesFor(orchardName)[0],
+        age: 0,
+        zone: null,
+        note: '',
+      });
+    }
+  }, [existingTree, editing, orchardName]); // dependencies
 
   if (!editing) return null;
 

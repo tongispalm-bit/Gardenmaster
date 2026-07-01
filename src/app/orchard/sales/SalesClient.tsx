@@ -146,10 +146,10 @@ export default function SalesClient() {
     return { totalSales, totalWeight, totalCut, totalNet, byGrade };
   }, [yearRecords]);
 
-  // Daily summary — จัดกลุ่มตามวัน
+  // Daily summary — จัดกลุ่มตามวัน (กรองตามปีที่เลือก)
   const dailySummaries = useMemo(() => {
     const grouped: Record<string, { totalAmount: number; cutCost: number; netAmount: number; weight: number; count: number }> = {};
-    for (const r of records) {
+    for (const r of yearRecords) {
       if (!grouped[r.date]) grouped[r.date] = { totalAmount: 0, cutCost: 0, netAmount: 0, weight: 0, count: 0 };
       grouped[r.date].totalAmount += r.totalAmount;
       grouped[r.date].cutCost += r.cutCost;
@@ -160,7 +160,7 @@ export default function SalesClient() {
     return Object.entries(grouped)
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([date, data]) => ({ date, ...data }));
-  }, [records]);
+  }, [yearRecords]);
 
   if (!orchard || loading) {
     return (
@@ -441,13 +441,13 @@ export default function SalesClient() {
               </button>
             </div>
 
-            {/* Content — แยกตามวัน */}
+            {/* Content — แยกตามวัน (แสดงเฉพาะปีที่เลือก) */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {records.length === 0 ? (
-                <p className="text-center py-10 text-slate-500 dark:text-slate-400">ยังไม่มีรายการขาย</p>
+              {yearRecords.length === 0 ? (
+                <p className="text-center py-10 text-slate-500 dark:text-slate-400">ยังไม่มีรายการขายในปีนี้</p>
               ) : (
                 dailySummaries.map((day) => {
-                  const dayRecords = records.filter((r) => r.date === day.date);
+                  const dayRecords = yearRecords.filter((r) => r.date === day.date);
                   return (
                     <div key={day.date}>
                       {/* Day header */}
